@@ -350,6 +350,7 @@ let csvData = [], sensorNames = [];
 let chartStartTime = null;
 let chartMode = 'EXPANDING';
 let animationFrameId = null;
+let wakeLockSentinel = null;
 
 // --- 상수 ---
 const MAX_VIEW_SECONDS = 60;
@@ -405,6 +406,7 @@ function initializeChart() {
 }
 
 function setupEventListeners() {
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     ui.connectBtn.addEventListener('click', toggleConnection);
     ui.deviceTypeSelect.addEventListener('change', updateConnectionUI);
     ui.sensorCountInput.addEventListener('input', updateSensorInputs);
@@ -610,6 +612,7 @@ async function connectSerial() {
         logMessage(`시리얼 포트 연결 완료`);
         ui.connectBtn.textContent = '연결 해제';
         ui.connectBtn.className = 'btn btn-disconnect';
+        await requestWakeLock(); // 화면 잠금 요청
         keepReading = true;
         readFromSerial();
     } catch (error) {
@@ -618,6 +621,10 @@ async function connectSerial() {
 }
 
 async function disconnectSerial() {
+    if (wakeLockSentinel) {
+        await wakeLockSentinel.release();
+        wakeLockSentinel = null;
+    }
     keepReading = false;
     if (isLogging) stopLogging();
     if (serialReader) {
@@ -657,6 +664,34 @@ async function readFromSerial() {
         if(serialReader) serialReader.releaseLock();
     }
 }
+
+// --- 화면 잠금 (Wake Lock) 로직 ---
+const requestWakeLock = async () => {
+    if ('wakeLock' in navigator) {
+        try {
+            wakeLockSentinel = await navigator.wakeLock.request('screen');
+            wakeLockSentinel.addEventListener('release', () => {
+                // 이 이벤트는 탭이 최소화되는 등 자동으로 해제될 때 발생하므로,
+                // 로그만 남기고 사용자가 다시 탭으로 돌아왔을 때 재요청될 수 있도록 합니다.
+                logMessage('💡 화면 잠금(Wake Lock)이 시스템에 의해 해제되었습니다.');
+            });
+            logMessage('✅ 화면 잠금(Wake Lock) 활성화됨. 데이터 수집 중에는 절전 모드로 전환되지 않습니다.');
+        } catch (err) {
+            logMessage(`❌ 화면 잠금 활성화 실패: ${err.name}, ${err.message}`);
+        }
+    } else {
+        logMessage('경고: 이 브라우저는 화면 잠금(Wake Lock API)을 지원하지 않습니다.');
+    }
+};
+
+const handleVisibilityChange = async () => {
+    // 연결이 활성 상태이고, 사용자가 페이지를 다시 보고 있으며, 이전에 잠금을 획득했던 경우
+    const isConnected = serialPort || (bleDevice && bleDevice.gatt.connected);
+    if (isConnected && document.visibilityState === 'visible') {
+        logMessage('페이지가 다시 활성화되어 화면 잠금을 재요청합니다.');
+        await requestWakeLock();
+    }
+};
 
 // --- 블루투스 LE 연결 로직 (안정성 강화) ---
 async function connectGattWithRetry(device, retries = 3, delay = 300) {
@@ -700,6 +735,7 @@ async function connectBLE() {
         logMessage('GATT 연결됨. UI를 \'연결 해제\' 상태로 업데이트합니다.');
         ui.connectBtn.textContent = '연결 해제';
         ui.connectBtn.className = 'btn btn-disconnect';
+        await requestWakeLock(); // 화면 잠금 요청
         // --- 여기까지 수정 ---
 
         logMessage('서비스 탐색 전 500ms 대기...');
@@ -745,6 +781,10 @@ async function disconnectBLE() {
 }
 
 function onBLEDisconnected() {
+    if (wakeLockSentinel) {
+        wakeLockSentinel.release();
+        wakeLockSentinel = null;
+    }
     const deviceName = bleDevice ? (bleDevice.name || '알 수 없는 장치') : '알 수 없는 장치';
     logMessage(`gattserverdisconnected 이벤트 수신됨. '${deviceName}'의 모든 리소스를 정리합니다.`);
 
