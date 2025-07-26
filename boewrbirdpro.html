@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOWERBIRD PRO - Real-Time Data Logger & Plotter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #F0F8F0;
+            color: #333;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: #FFFFFF;
+            padding: 1rem 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #2c3e50;
+            font-weight: bold;
+            font-size: 1.5rem;
+            text-decoration: none;
+        }
+        .logo img {
+            width: 40px;
+            height: 40px;
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+            height: calc(100vh - 140px);
+        }
+        .left-panel {
+            background: #FFFFFF;
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+            border: 1px solid #E0E0E0;
+            display: flex;
+            flex-direction: column;
+        }
+        .section {
+            margin-bottom: 20px;
+            border: 1px solid #E0E0E0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .section-no-border {
+             margin-bottom: 20px;
+        }
+        .section h3 {
+            margin: -20px -20px 15px -20px;
+            padding: 10px 20px;
+            color: #333;
+            font-size: 1.1rem;
+            border-bottom: 1px solid #EAEAEA;
+            background-color: #F8F8F8;
+            border-radius: 8px 8px 0 0;
+        }
+        .form-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            gap: 10px;
+        }
+        .form-group label {
+            flex-shrink: 0;
+            width: 90px;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 0;
+        }
+        select, input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #CCC;
+            background-color: #FFF;
+            color: #333;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        select:focus, input:focus {
+            outline: none;
+            border-color: #2E8B57;
+        }
+        .btn {
+            display: block;
+            text-align: center;
+            text-decoration: none;
+            width: 100%;
+            padding: 12px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+        .btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+        button:disabled {
+            background-color: #E0E0E0;
+            color: #A0A0A0;
+            cursor: not-allowed;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .button-group .btn {
+            flex: 1;
+        }
+        .btn-serial-connect { 
+            background-color: #90EE90; 
+            color: #2E8B57; 
+            border: 2px solid #2E8B57;
+        }
+        .btn-serial-connect:hover:not(:disabled) { 
+            background-color: #98FB98; 
+        }
+        .btn-serial-disconnect { 
+            background-color: #F08080; 
+            color: white; 
+            border: 2px solid #CD5C5C;
+        }
+        .btn-start { background-color: #98FB98; color: #2E8B57; }
+        .btn-start:hover:not(:disabled) { background-color: #90EE90; }
+        .btn-pause { background-color: #D3D3D3; color: #555; }
+        .btn-pause:hover:not(:disabled) { background-color: #C0C0C0; }
+        .btn-stop { background-color: #F08080; color: white; }
+        .btn-stop:hover:not(:disabled) { background-color: #CD5C5C; }
+        .btn-info { background-color: #ADD8E6; color: #1E90FF; }
+        .btn-info:hover { background-color: #87CEEB; }
+        
+        /* 센서 이름 설정 스타일 */
+        .sensor-section-header {
+            margin-bottom: 15px;
+        }
+        
+        .sensor-section-header label {
+            font-weight: 500;
+            color: #555;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .sensor-inputs-container {
+            border: 1px solid #E0E0E0;
+            border-radius: 5px;
+            padding: 15px;
+            background-color: #FAFAFA;
+        }
+        
+        .sensor-input-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+        
+        .sensor-input-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .sensor-input-group label {
+            flex-shrink: 0;
+            width: 60px;
+            font-weight: 500;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .sensor-input-group input {
+            flex: 1;
+            padding: 6px 8px;
+            border: 1px solid #CCC;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .right-panel {
+            display: grid;
+            grid-template-rows: 250px 1fr;
+            gap: 20px;
+            height: 100%;
+            min-height: 0; /* 그리드 오버플로우 방지 */
+        }
+        .chart-container, .log-section {
+            background: #FFFFFF;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #E0E0E0;
+            overflow: hidden; /* 컨테이너 오버플로우 방지 */
+        }
+        #dataChart {
+            background-color: #FAFAFA;
+            border-radius: 5px;
+        }
+        .logs-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: 100%;
+            min-height: 0; /* 그리드 오버플로우 방지 */
+        }
+        .log-section {
+            display: flex;
+            flex-direction: column;
+            min-height: 0; /* flex 오버플로우 방지 */
+        }
+        .log-section h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 1rem;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #EAEAEA;
+            flex-shrink: 0; /* 헤더 크기 고정 */
+        }
+        .log-content {
+            flex: 1;
+            overflow-y: auto;
+            background: #FDFDFD;
+            border: 1px solid #EAEAEA;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            min-height: 0; /* 콘텐츠 영역 제한 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+             <div class="header-content">
+                <a href="index.html" class="logo">
+                    <img src="./images/bowerbirdpro_logo.png" alt="Bowerbird Pro 로고">
+                    <div>
+                        <div>BOWERBIRD PRO</div>
+                        <div style="font-size: 0.7rem; opacity: 0.7;">Real-Time Data Logger & Plotter</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <div class="left-panel">
+                <div class="section">
+                    <h3>연결 설정</h3>
+                    <div class="form-group">
+                        <label for="language">언어</label>
+                        <select id="language">
+                            <option value="ko">한국어 (Korean)</option>
+                            <option value="en" disabled>English (TBD)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="deviceType">장치 유형</label>
+                        <select id="deviceType">
+                            <option value="serial">시리얼 포트</option>
+                            <option value="bluetooth" disabled>블루투스 LE (TBD)</option>
+                        </select>
+                    </div>
+                    <div id="serialSettings">
+                         <div class="form-group">
+                            <label for="baudRate">보드레이트</label>
+                            <select id="baudRate">
+                                <option value="9600" selected>9600</option>
+                                <option value="115200">115200</option>
+                            </select>
+                        </div>
+                        <button id="connectSerial" class="btn btn-serial-connect">시리얼 연결</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>센서 설정</h3>
+                    <div class="form-group">
+                        <label for="sensorCount">센서 개수</label>
+                        <input type="number" id="sensorCount" value="1" min="1" max="10">
+                    </div>
+                    <div class="sensor-section-header">
+                         <label>센서 이름 설정</label>
+                         <div id="sensorInputs" class="sensor-inputs-container">
+                            <!-- 센서 입력 칸들이 여기에 동적으로 생성됩니다 -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-no-border">
+                    <div class="button-group">
+                        <button id="startLogging" class="btn btn-start">시작</button>
+                        <button id="pauseLogging" class="btn btn-pause" disabled>일시정지</button>
+                        <button id="stopLogging" class="btn btn-stop" disabled>정지</button>
+                    </div>
+                    <a href="information.html" target="_blank" class="btn btn-info">정보</a>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                 <div class="logs-container">
+                    <div class="log-section">
+                        <h4>콘솔 로그</h4>
+                        <div id="consoleLog" class="log-content"></div>
+                    </div>
+                    <div class="log-section">
+                        <h4>수신 데이터 로그</h4>
+                        <div id="dataLog" class="log-content"></div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="dataChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+// --- 전역 변수 ---
+let chart, serialPort, serialReader;
+let isLogging = false, isPaused = false, keepReading = false;
+let csvData = [], sensorNames = [], sensorColors = ['#FF0000', '#FFA500', '#FFFF00', '#00FF00', '#0000FF', '#800080', '#FFC0CB', '#808080', '#00FFFF', '#90EE90'];
+let dataPoints = []; // 시간 기반 데이터 포인트 저장
+let startTime = null;
+
+const ui = {
+    connectBtn: document.getElementById('connectSerial'),
+    startBtn: document.getElementById('startLogging'),
+    pauseBtn: document.getElementById('pauseLogging'),
+    stopBtn: document.getElementById('stopLogging'),
+    sensorCountInput: document.getElementById('sensorCount'),
+    sensorInputsContainer: document.getElementById('sensorInputs')
+};
+
+// --- 초기화 ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Chart.js가 로드될 때까지 대기
+    if (typeof Chart === 'undefined') {
+        setTimeout(() => {
+            if (typeof Chart !== 'undefined') {
+                initializeChart();
+                setupEventListeners();
+                updateSensorInputs(); 
+                logMessage('Application initialized successfully.');
+            } else {
+                logMessage('Chart.js 로딩 실패. 페이지를 새로고침해주세요.');
+            }
+        }, 500);
+    } else {
+        initializeChart();
+        setupEventListeners();
+        updateSensorInputs(); 
+        logMessage('Application initialized successfully.');
+    }
+});
+
+function initializeChart() {
+    if (typeof Chart === 'undefined') {
+        logMessage('Chart.js가 아직 로드되지 않았습니다.');
+        return;
+    }
+    
+    const ctx = document.getElementById('dataChart').getContext('2d');
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: { datasets: [] },
+        options: {
+            responsive: true, 
+            maintainAspectRatio: false, 
+            animation: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            scales: {
+                x: { 
+                    type: 'linear',
+                    title: { 
+                        display: true, 
+                        text: '시간 (초)', 
+                        color: '#555' 
+                    }, 
+                    ticks: { 
+                        color: '#555',
+                        callback: function(value) {
+                            // 초를 MM:SS 형태로 변환
+                            const minutes = Math.floor(value / 60);
+                            const seconds = Math.floor(value % 60);
+                            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                        }
+                    }
+                },
+                y: { 
+                    title: { 
+                        display: true, 
+                        text: '값', 
+                        color: '#555' 
+                    }, 
+                    ticks: { color: '#555' } 
+                }
+            },
+            plugins: { 
+                legend: { 
+                    display: true,
+                    position: 'top',
+                    align: 'end',
+                    labels: { 
+                        color: '#333',
+                        usePointStyle: true,
+                        pointStyle: 'line',
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    } 
+                } 
+            }
+        }
+    });
+    
+    logMessage('차트가 초기화되었습니다.');
+}
+
+function setupEventListeners() {
+    ui.connectBtn.addEventListener('click', toggleSerialConnection);
+    ui.sensorCountInput.addEventListener('input', updateSensorInputs);
+    ui.startBtn.addEventListener('click', startLogging);
+    ui.pauseBtn.addEventListener('click', togglePause);
+    ui.stopBtn.addEventListener('click', stopLogging);
+}
+
+// --- UI 업데이트 ---
+function updateSensorInputs() {
+    const count = parseInt(ui.sensorCountInput.value, 10) || 0;
+
+    // 기존 입력 칸 모두 삭제
+    ui.sensorInputsContainer.innerHTML = '';
+    
+    // 센서 이름 배열 초기화
+    sensorNames = [];
+
+    // 설정된 개수만큼 입력 칸을 새로 생성
+    for (let i = 0; i < count; i++) {
+        const defaultName = `센서 ${i + 1}`;
+        sensorNames.push(defaultName);
+
+        const inputGroup = document.createElement('div');
+        inputGroup.className = 'sensor-input-group';
+        
+        const label = document.createElement('label');
+        label.textContent = `센서 ${i + 1}:`;
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = defaultName;
+        input.placeholder = `센서 ${i + 1} 이름`;
+        
+        // 사용자가 입력하면 실시간으로 sensorNames 배열을 업데이트
+        input.addEventListener('input', () => {
+            const newName = input.value.trim() || defaultName;
+            sensorNames[i] = newName;
+            updateChartDatasets();
+        });
+
+        inputGroup.appendChild(label);
+        inputGroup.appendChild(input);
+        ui.sensorInputsContainer.appendChild(inputGroup);
+    }
+    
+    // 차트 범례 업데이트
+    updateChartDatasets();
+}
+
+function updateChartDatasets() {
+    if (!chart) {
+        logMessage('차트가 초기화되지 않았습니다.');
+        return;
+    }
+    
+    chart.data.datasets = sensorNames.map((name, i) => ({
+        label: name,
+        data: [],
+        borderColor: sensorColors[i % sensorColors.length],
+        backgroundColor: sensorColors[i % sensorColors.length] + '20', // 투명도 추가
+        tension: 0.1,
+        pointRadius: 2,
+        pointHoverRadius: 4,
+        borderWidth: 2,
+        fill: false
+    }));
+    chart.update();
+}
+
+// --- 시리얼 통신 ---
+async function toggleSerialConnection() {
+    if (serialPort) await disconnectSerial();
+    else await connectSerial();
+}
+
+async function connectSerial() {
+    if (!('serial' in navigator)) {
+        alert('Web Serial API가 지원되지 않는 브라우저입니다. Chrome 브라우저를 사용해주세요.');
+        return;
+    }
+    
+    try {
+        logMessage('시리얼 포트 연결 시도 중...');
+        
+        // 기존 연결이 있으면 먼저 정리
+        if (serialPort || serialReader) {
+            await disconnectSerial();
+            await new Promise(resolve => setTimeout(resolve, 100)); // 짧은 대기
+        }
+        
+        serialPort = await navigator.serial.requestPort();
+        const baudRate = parseInt(document.getElementById('baudRate').value, 10);
+        await serialPort.open({ baudRate: baudRate });
+        
+        logMessage(`시리얼 포트 연결 완료 (${baudRate} baud)`);
+        ui.connectBtn.textContent = '연결 해제';
+        ui.connectBtn.className = 'btn btn-serial-disconnect';
+        keepReading = true;
+        readFromSerial();
+    } catch (error) {
+        logMessage(`연결 실패: ${error.message}`);
+        serialPort = null;
+        serialReader = null;
+    }
+}
+
+async function disconnectSerial() {
+    logMessage('시리얼 연결 해제 중...');
+    keepReading = false;
+    
+    if (isLogging) {
+        stopLogging();
+    }
+    
+    try {
+        // reader가 있으면 먼저 해제
+        if (serialReader) {
+            try {
+                await serialReader.cancel();
+                serialReader.releaseLock();
+                serialReader = null;
+            } catch (readerError) {
+                // reader 해제 실패는 무시하고 계속 진행
+            }
+        }
+        
+        // 포트가 있으면 닫기
+        if (serialPort) {
+            try {
+                await serialPort.close();
+            } catch (portError) {
+                // 포트 닫기 실패도 무시
+            }
+            serialPort = null;
+        }
+        
+        // UI 상태 복원
+        ui.connectBtn.textContent = '시리얼 연결';
+        ui.connectBtn.className = 'btn btn-serial-connect';
+        logMessage('시리얼 연결 해제 완료');
+        
+    } catch (error) {
+        // 모든 오류를 무시하고 강제로 UI 복원
+        ui.connectBtn.textContent = '시리얼 연결';
+        ui.connectBtn.className = 'btn btn-serial-connect';
+        serialPort = null;
+        serialReader = null;
+        logMessage('시리얼 연결 강제 해제');
+    }
+}
+
+async function readFromSerial() {
+    if (!serialPort || !keepReading) return;
+    
+    try {
+        logMessage('데이터 읽기 시작');
+        const textDecoder = new TextDecoderStream();
+        const readableStreamClosed = serialPort.readable.pipeTo(textDecoder.writable);
+        serialReader = textDecoder.readable.getReader();
+        
+        let partialLine = '';
+        
+        while (keepReading && serialPort && serialReader) {
+            try {
+                const { value, done } = await serialReader.read();
+                if (done) break;
+                
+                if (value) {
+                    partialLine += value;
+                    const lines = partialLine.split('\n');
+                    partialLine = lines.pop() || '';
+                    
+                    for (const line of lines) {
+                        const trimmedLine = line.trim();
+                        if (trimmedLine) {
+                            processDataLine(trimmedLine);
+                        }
+                    }
+                }
+            } catch (readError) {
+                if (keepReading) {
+                    logMessage(`읽기 오류: ${readError.message}`);
+                }
+                break;
+            }
+        }
+        
+    } catch (error) {
+        if (keepReading) {
+            logMessage(`시리얼 읽기 실패: ${error.message}`);
+        }
+    } finally {
+        // 정리 작업
+        if (serialReader) {
+            try {
+                serialReader.releaseLock();
+            } catch (e) {
+                // 무시
+            }
+            serialReader = null;
+        }
+    }
+}
+
+// --- 데이터 처리 및 로깅 ---
+function processDataLine(line) {
+    // 수신 데이터 로그에 데이터만 기록 (시간 없이)
+    logDataMessage(line);
+    
+    // 로깅이 활성화되고 일시정지가 아닐 때만 차트 업데이트
+    if (!isLogging || isPaused) {
+        return;
+    }
+    
+    if (line.startsWith('DATA,')) {
+        try {
+            const parts = line.split(',');
+            const values = parts.slice(1).map(v => {
+                const num = parseFloat(v);
+                if (isNaN(num)) {
+                    throw new Error(`잘못된 숫자: ${v}`);
+                }
+                return num;
+            });
+            
+            const currentTime = new Date();
+            updateChart(currentTime, values);
+            csvData.push([currentTime.toLocaleString('ko-KR'), ...values]);
+            
+        } catch (error) {
+            logMessage(`데이터 파싱 오류: ${error.message}`);
+        }
+    }
+}
+
+function updateChart(time, values) {
+    if (!chart) return;
+    
+    // 시작 시간 설정 (처음 데이터가 들어올 때)
+    if (!startTime) {
+        startTime = time;
+    }
+    
+    // 경과 시간 계산 (초 단위)
+    const elapsedSeconds = (time - startTime) / 1000;
+    
+    values.forEach((value, i) => {
+        if (chart.data.datasets[i]) {
+            chart.data.datasets[i].data.push({ x: elapsedSeconds, y: value });
+            
+            // 최대 300개 데이터 포인트 유지
+            if (chart.data.datasets[i].data.length > 300) {
+                chart.data.datasets[i].data.shift();
+            }
+        }
+    });
+    
+    chart.update('none'); // 애니메이션 없이 업데이트
+}
+
+function startLogging() {
+    if (!serialPort) return alert('먼저 장치에 연결해주세요.');
+    isLogging = true;
+    isPaused = false;
+    startTime = null;
+    csvData = [['날짜/시간', ...sensorNames]];
+    
+    if (chart && chart.data.datasets) {
+        chart.data.datasets.forEach(dataset => dataset.data = []);
+        chart.update();
+    }
+    
+    ui.startBtn.disabled = true;
+    ui.pauseBtn.disabled = false;
+    ui.pauseBtn.textContent = '일시정지';
+    ui.stopBtn.disabled = false;
+    logMessage('로깅 시작');
+}
+
+function togglePause() {
+    isPaused = !isPaused;
+    ui.pauseBtn.textContent = isPaused ? '재개' : '일시정지';
+    logMessage(isPaused ? '로깅 일시정지' : '로깅 재개');
+}
+
+function stopLogging() {
+    isLogging = false;
+    ui.startBtn.disabled = false;
+    ui.pauseBtn.disabled = true;
+    ui.pauseBtn.textContent = '일시정지';
+    ui.stopBtn.disabled = true;
+    logMessage('로깅 중지');
+    if (csvData.length > 1) downloadCSV();
+}
+
+function downloadCSV() {
+    const csvContent = csvData.map(row => row.join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Bowerbird_PRO_datalog_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    logMessage('CSV 파일 다운로드 완료');
+}
+
+// --- 유틸리티 ---
+function logMessage(message) {
+    const log = document.getElementById('consoleLog');
+    const timestamp = new Date().toLocaleTimeString();
+    log.textContent += `[${timestamp}] ${message}\n`;
+    log.scrollTop = log.scrollHeight;
+    
+    // 로그 라인 수 제한 (300줄)
+    const lines = log.textContent.split('\n');
+    if (lines.length > 300) {
+        log.textContent = lines.slice(-200).join('\n');
+    }
+}
+function logDataMessage(message) {
+    const log = document.getElementById('dataLog');
+    log.textContent += message + '\n';
+    log.scrollTop = log.scrollHeight;
+    
+    // 로그 라인 수 제한 (500줄)
+    const lines = log.textContent.split('\n');
+    if (lines.length > 500) {
+        log.textContent = lines.slice(-400).join('\n');
+    }
+}
+</script>
+</body>
+</html>

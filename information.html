@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOWERBIRDPRO - 실시간 데이터 로거 정보</title>
+    <link rel="icon" href="images/bowerbirdpro.ico" type="image/x-icon">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #E8F5E8 0%, #D4F1D4 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(144, 238, 144, 0.2);
+            overflow: hidden;
+            margin-top: 40px;
+            margin-bottom: 40px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #90EE90 0%, #98FB98 100%);
+            color: #2F5233;
+            padding: 2rem;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .header img {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 1rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            margin: 0;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            margin-top: 0.5rem;
+            opacity: 0.8;
+        }
+
+        /* Content */
+        .content {
+            padding: 2rem;
+        }
+
+        /* Developer Info */
+        .developer-info {
+            background: linear-gradient(135deg, #87CEEB 0%, #98D8E8 100%);
+            color: #1B4F72;
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        }
+
+        .developer-info h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .developer-info .info-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.8rem 1.5rem;
+            align-items: center;
+        }
+
+        .developer-info .label {
+            font-weight: bold;
+            opacity: 0.9;
+        }
+
+        /* Section Styling */
+        .section {
+            margin-bottom: 2rem;
+        }
+
+        .section h2 {
+            color: #6B8E6B;
+            border-bottom: 3px solid #90EE90;
+            padding-bottom: 0.8rem;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+        }
+
+        .section h3 {
+            color: #7BA77B;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+
+        .section p {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Philosophy Box */
+        .philosophy {
+            background: linear-gradient(135deg, #F0FFF0 0%, #E8F5E8 100%);
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+            margin: 2rem 0;
+            border: 2px solid #B8E6B8;
+        }
+
+        .philosophy h3 {
+            margin: 0 0 1rem 0;
+            color: #5A7A5A;
+            font-size: 1.3rem;
+        }
+
+        .philosophy p {
+            margin: 0;
+            color: #5A7A5A;
+            font-style: italic;
+            font-size: 1.1rem;
+        }
+
+        /* Feature Cards */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, #B8E6B8 0%, #A8D8A8 100%);
+            color: #2F5233;
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(144, 238, 144, 0.3);
+        }
+
+        .feature-card h4 {
+            margin: 0 0 0.8rem 0;
+            font-size: 1.1rem;
+        }
+
+        .feature-card p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        /* Steps */
+        .steps {
+            counter-reset: step-counter;
+        }
+
+        .step {
+            counter-increment: step-counter;
+            position: relative;
+            padding-left: 4rem;
+            margin-bottom: 2rem;
+        }
+
+        .step::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #90EE90;
+            color: #2F5233;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .step h4 {
+            margin: 0 0 0.8rem 0;
+            color: #6B8E6B;
+            font-size: 1.2rem;
+        }
+
+        .step ul {
+            padding-left: 1.2rem;
+        }
+
+        .step li {
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        /* Data Format Box */
+        .data-format {
+            background: #F8FFF8;
+            border: 2px solid #90EE90;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .data-format code {
+            background: #90EE90;
+            color: #2F5233;
+            padding: 0.5rem 0.8rem;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            display: inline-block;
+            margin: 0.3rem 0;
+            font-size: 1rem;
+        }
+
+        /* Highlight Box */
+        .highlight-box {
+            background: linear-gradient(135deg, #F0FFF0 0%, #E8F5E8 100%);
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border-left: 4px solid #90EE90;
+        }
+
+        .highlight-box ul {
+            padding-left: 1.2rem;
+        }
+
+        .highlight-box li {
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        /* Resources */
+        .resources {
+            background: #F8FFF8;
+            padding: 1.5rem;
+            border-radius: 10px;
+            border-left: 4px solid #90EE90;
+        }
+
+        .resources ul {
+            padding-left: 1.2rem;
+        }
+
+        .resources li {
+            margin-bottom: 0.8rem;
+            font-size: 1rem;
+        }
+
+        .resources a {
+            color: #6B8E6B;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .resources a:hover {
+            text-decoration: underline;
+        }
+
+        /* Text Styling */
+        strong {
+            color: #6B8E6B;
+        }
+
+        ul {
+            padding-left: 1.2rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                margin: 20px;
+                border-radius: 15px;
+            }
+
+            .content {
+                padding: 1.5rem;
+            }
+
+            .header {
+                padding: 1.5rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .developer-info .info-grid {
+                grid-template-columns: 1fr;
+                gap: 0.8rem;
+            }
+
+            .step {
+                padding-left: 3.5rem;
+            }
+
+            .step::before {
+                width: 2.2rem;
+                height: 2.2rem;
+                font-size: 1rem;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Scroll Animation */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="images/bowerbirdpro_logo.png" alt="BOWERBIRDPRO Logo">
+            <h1>BOWERBIRDPRO</h1>
+            <p>Real-Time Data Logger & Plotter</p>
+        </div>
+
+        <div class="content">
+            <div class="developer-info fade-in">
+                <h2>👨‍💻 개발자 정보</h2>
+                <div class="info-grid">
+                    <span class="label">개발자:</span>
+                    <span>kim seok jeon (alphaco)</span>
+                    <span class="label">연락처:</span>
+                    <span>alphaco@kakao.com / doolbat@naver.com</span>
+                    <span class="label">버전:</span>
+                    <span>BOWERBIRDPRO_V1</span>
+                    <span class="label">프로그램명:</span>
+                    <span>Real-Time Data Logger & Plotter</span>
+                </div>
+            </div>
+
+            <div class="philosophy fade-in">
+                <h3>🐦 바우어버드 철학</h3>
+                <p>정원새 바우어버드가 각종 물건을 수집해 아름다운 둥지를 만들듯,<br>
+                센서 데이터를 정교하게 수집하고 시각화합니다.</p>
+            </div>
+
+            <div class="section fade-in">
+                <h2>📋 프로그램 소개</h2>
+                <p>BOWERBIRDPRO는 시리얼 또는 블루투스 LE(BLE) 장치에 연결하여 데이터를 수신하고, 실시간으로 그래프에 표시하며, CSV 파일로 저장할 수 있는 프로그램입니다.</p>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>🌐 다국어 지원</h4>
+                        <p>17개 언어 지원<br>실시간 언어 변경</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📡 다중 통신</h4>
+                        <p>시리얼 & BLE 통신<br>자동 장치 인식</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📊 실시간 시각화</h4>
+                        <p>최대 10개 센서<br>실시간 그래프 플로팅</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>💾 데이터 저장</h4>
+                        <p>CSV 자동 저장<br>타임스탬프 포함</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section fade-in">
+                <h2>🚀 사용법</h2>
+                <div class="steps">
+                    <div class="step">
+                        <h4>연결 설정</h4>
+                        <ul>
+                            <li><strong>언어:</strong> 드롭다운에서 원하는 표시 언어를 선택하세요.</li>
+                            <li><strong>장치 유형:</strong> 유선 연결은 '시리얼 포트', BLE 장치는 '블루투스 LE'를 선택하세요.</li>
+                            <li><strong>시리얼 포트:</strong> 장치가 연결된 COM 포트와 보드레이트를 선택하세요.</li>
+                            <li><strong>블루투스 LE:</strong> 'BLE 장치 스캔'을 클릭하고 장치를 선택한 후 '연결'을 클릭하세요.</li>
+                        </ul>
+                    </div>
+
+                    <div class="step">
+                        <h4>센서 구성</h4>
+                        <ul>
+                            <li><strong>센서 개수:</strong> 장치가 보낼 데이터 값의 개수를 지정하세요 (최대 10개).</li>
+                            <li><strong>센서 이름:</strong> 각 센서에 대해 사용자 정의 이름을 설정할 수 있습니다.</li>
+                        </ul>
+                    </div>
+
+                    <div class="step">
+                        <h4>데이터 형식 설정</h4>
+                        <div class="data-format">
+                            <p>연결된 장치는 다음 형식으로 데이터를 전송해야 합니다:</p>
+                            <code>DATA,값1,값2,값3,...</code>
+                            <p><strong>예시 (3개 센서):</strong></p>
+                            <code>DATA,25.5,1023.1,75.0</code>
+                            <p><strong>주의:</strong> 'DATA,' 다음의 값 개수가 설정한 센서 개수와 일치해야 합니다.</p>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <h4>로깅 및 플로팅</h4>
+                        <ul>
+                            <li><strong>로깅 시작:</strong> 데이터 수신, 그래프 표시, CSV 저장을 시작합니다.</li>
+                            <li><strong>CSV 파일:</strong> 프로그램과 같은 폴더에 연결 정보와 타임스탬프가 포함된 파일명으로 자동 생성됩니다.</li>
+                            <li><strong>일시정지/재개:</strong> 데이터 로깅을 일시적으로 중지하거나 계속할 수 있습니다.</li>
+                            <li><strong>로깅 중지:</strong> 현재 세션을 종료하고 CSV 파일을 마무리합니다.</li>
+                        </ul>
+                    </div>
+
+                    <div class="step">
+                        <h4>실시간 그래프</h4>
+                        <ul>
+                            <li>X축: 시간 (시:분:초 형식)</li>
+                            <li>Y축: 센서 값 (자동 범위 조정)</li>
+                            <li>각 센서는 고유한 색상의 선으로 표시됩니다</li>
+                            <li>범례로 각 센서를 구분할 수 있습니다</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section fade-in">
+                <h2>⚙️ 기술적 특징</h2>
+                <div class="highlight-box">
+                    <ul>
+                        <li><strong>비동기 통신:</strong> 시리얼 및 BLE 통신을 위한 별도 워커 스레드</li>
+                        <li><strong>실시간 처리:</strong> UI 블로킹 없는 데이터 수신 및 처리</li>
+                        <li><strong>자동 프로토콜 감지:</strong> Nordic UART, JDY_FFE0 등 다중 BLE 프로파일 지원</li>
+                        <li><strong>데이터 검증:</strong> 실시간 데이터 유효성 검사 및 오류 처리</li>
+                        <li><strong>메모리 관리:</strong> 최대 300개 데이터 포인트 유지 (rolling window)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section fade-in">
+                <h2>🔧 호환 장치</h2>
+                <div class="highlight-box">
+                    <p><strong>지원 MCU:</strong> Arduino, Micro:bit, Raspberry Pi Pico, ESP32 등 모든 MCU</p>
+                    <p><strong>통신 방식:</strong></p>
+                    <ul>
+                        <li>시리얼 통신: USB, UART, SPP 블루투스</li>
+                        <li>BLE 통신: Micro:bit, ESP32, Arduino Nano 33 BLE 등</li>
+                    </ul>
+                    <p><strong>주의사항:</strong> 블루투스 전송 시 센서가 많으면 데이터가 분할 전송될 수 있으므로, 많은 센서 사용 시 시리얼 통신 권장</p>
+                </div>
+            </div>
+
+            <div class="section fade-in">
+                <h2>📚 추가 자료</h2>
+                <div class="resources">
+                    <ul>
+                        <li><strong>관련 사이트:</strong> 
+                            <a href="http://gorillacell.kr" target="_blank">gorillacell.kr</a>, 
+                            <a href="http://brixel.kr" target="_blank">brixel.kr</a>
+                        </li>
+                        <li><strong>YouTube 튜토리얼:</strong> 
+                            <a href="https://youtube.com/playlist?list=PLvqoyPjBsPKmNYNbOP_ZBgGOvx5S92GtH&si=ZGTgi1fDNLnVmdnN" target="_blank">사용법 영상 재생목록</a>
+                        </li>
+                        <li><strong>Micro:bit 예제 코드:</strong> 
+                            <a href="https://makecode.microbit.org/S01650-49573-77266-81374" target="_blank">블루투스 데이터 전송 소스코드</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section fade-in">
+                <h2>📞 지원 및 문의</h2>
+                <div class="highlight-box">
+                    <p>문제가 발생하거나 지원이 필요한 경우 개발자에게 연락해주세요.</p>
+                    <p><strong>이메일:</strong> alphaco@kakao.com 또는 doolbat@naver.com</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fade in animation on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.fade-in').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Initial load animation for first visible elements
+        setTimeout(() => {
+            document.querySelectorAll('.fade-in').forEach((el, index) => {
+                if (el.getBoundingClientRect().top < window.innerHeight) {
+                    setTimeout(() => {
+                        el.classList.add('visible');
+                    }, index * 100);
+                }
+            });
+        }, 100);
+    </script>
+</body>
+</html>
