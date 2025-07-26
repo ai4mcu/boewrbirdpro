@@ -6,263 +6,17 @@
     <title>BOWERBIRD PRO - Real-Time Data Logger & Plotter (Serial + BLE)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #F0F8F0;
-            color: #333;
-            min-height: 100vh;
-        }
-        .container {
-            max-width: 100%;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .header {
-            background: #FFFFFF;
-            padding: 1rem 0;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            border-radius: 15px;
-            margin-bottom: 20px;
-        }
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 2rem;
-        }
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #2c3e50;
-            font-weight: bold;
-            font-size: 1.5rem;
-            text-decoration: none;
-        }
-        .logo img {
-            width: 40px;
-            height: 40px;
-        }
-        .main-layout {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 20px;
-            height: calc(100vh - 140px);
-        }
-        .left-panel {
-            background: #FFFFFF;
-            border-radius: 10px;
-            padding: 20px;
-            overflow-y: auto;
-            border: 1px solid #E0E0E0;
-            display: flex;
-            flex-direction: column;
-        }
-        .section {
-            margin-bottom: 20px;
-            border: 1px solid #E0E0E0;
-            border-radius: 8px;
-            padding: 20px;
-        }
-        .section-no-border {
-             margin-bottom: 20px;
-        }
-        .section h3 {
-            margin: -20px -20px 15px -20px;
-            padding: 10px 20px;
-            color: #333;
-            font-size: 1.1rem;
-            border-bottom: 1px solid #EAEAEA;
-            background-color: #F8F8F8;
-            border-radius: 8px 8px 0 0;
-        }
-        .form-group {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            gap: 10px;
-        }
-        .form-group label {
-            flex-shrink: 0;
-            width: 90px;
-            font-weight: 500;
-            color: #555;
-            margin-bottom: 0;
-        }
-        select, input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #CCC;
-            background-color: #FFF;
-            color: #333;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        select:focus, input:focus {
-            outline: none;
-            border-color: #2E8B57;
-        }
-        .btn {
-            display: block;
-            text-align: center;
-            text-decoration: none;
-            width: 100%;
-            padding: 12px;
-            border-radius: 5px;
-            font-weight: bold;
-            font-size: 1rem;
-            cursor: pointer;
-            border: none;
-            transition: all 0.2s ease;
-        }
-        .btn:active:not(:disabled) {
-            transform: scale(0.98);
-        }
-        button:disabled {
-            background-color: #E0E0E0;
-            color: #A0A0A0;
-            cursor: not-allowed;
-        }
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        .button-group .btn {
-            flex: 1;
-        }
-        .btn-connect {
-            background-color: #4CAF50; /* 초록색 */
-            color: white;
-        }
-        .btn-connect:hover:not(:disabled) {
-            background-color: #45a049;
-        }
-        .btn-disconnect {
-            background-color: #f44336; /* 빨간색 */
-            color: white;
-        }
-        .btn-disconnect:hover:not(:disabled) {
-            background-color: #d32f2f;
-        }
-        .btn-start { background-color: #98FB98; color: #2E8B57; }
-        .btn-start:hover:not(:disabled) { background-color: #90EE90; }
-        .btn-pause { background-color: #D3D3D3; color: #555; }
-        .btn-pause:hover:not(:disabled) { background-color: #C0C0C0; }
-        .btn-stop { background-color: #F08080; color: white; }
-        .btn-stop:hover:not(:disabled) { background-color: #CD5C5C; }
-        .btn-info { background-color: #ADD8E6; color: #1E90FF; }
-        .btn-info:hover { background-color: #87CEEB; }
-
-        .sensor-section-header {
-            margin-bottom: 15px;
-        }
-        .sensor-section-header label {
-            font-weight: 500;
-            color: #555;
-            display: block;
-            margin-bottom: 10px;
-        }
-        .sensor-inputs-container {
-            border: 1px solid #E0E0E0;
-            border-radius: 5px;
-            padding: 15px;
-            background-color: #FAFAFA;
-        }
-        .sensor-input-group {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-            gap: 10px;
-        }
-        .sensor-input-group:last-child {
-            margin-bottom: 0;
-        }
-        .sensor-input-group label {
-            flex-shrink: 0;
-            width: 60px;
-            font-weight: 500;
-            color: #555;
-            font-size: 14px;
-        }
-        .sensor-input-group input {
-            flex: 1;
-            padding: 6px 8px;
-            border: 1px solid #CCC;
-            border-radius: 4px;
-            font-size: 13px;
-        }
-        .right-panel {
-            display: grid;
-            grid-template-rows: 250px 1fr;
-            gap: 20px;
-            height: 100%;
-            min-height: 0;
-        }
-        .chart-container, .log-section {
-            background: #FFFFFF;
-            border-radius: 10px;
-            padding: 20px;
-            border: 1px solid #E0E0E0;
-            overflow: hidden;
-        }
-        #dataChart {
-            background-color: #FAFAFA;
-            border-radius: 5px;
-        }
-        .logs-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            height: 100%;
-            min-height: 0;
-        }
-        .log-section {
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
-        .log-section h4 {
-            margin: 0 0 10px 0;
-            color: #333;
-            font-size: 1rem;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #EAEAEA;
-            flex-shrink: 0;
-        }
-        .log-content {
-            flex: 1;
-            overflow-y: auto;
-            background: #FDFDFD;
-            border: 1px solid #EAEAEA;
-            border-radius: 5px;
-            padding: 10px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            line-height: 1.4;
-            color: #333;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            min-height: 0;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body id="page-app">
     <div class="container">
         <div class="header">
              <div class="header-content">
                 <a href="index.html" class="logo">
                     <img src="./images/bowerbirdpro_logo.png" alt="Bowerbird Pro 로고">
                     <div>
-                        <div>BOWERBIRD PRO</div>
-                        <div style="font-size: 0.7rem; opacity: 0.7;">Real-Time Data Logger & Plotter</div>
+                        <div style="font-weight: 900;">BOWERBIRD <span style="color: #f44336;">PRO</span></div>
+                        <div data-translate="appSubtitle" style="font-size: 0.7rem; opacity: 0.7;">Real-Time Data Logger & Plotter</div>
                     </div>
                 </a>
             </div>
@@ -271,17 +25,23 @@
         <div class="main-layout">
             <div class="left-panel">
                 <div class="section">
-                    <h3>연결 설정</h3>
+                    <h3 data-translate="connectionSettings">연결 설정</h3>
+                    
                     <div class="form-group">
-                        <label for="deviceType">장치 유형</label>
+                        <label for="languageSelector" data-translate="language">언어</label>
+                        <select id="languageSelector"></select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="deviceType" data-translate="deviceType">장치 유형</label>
                         <select id="deviceType">
-                            <option value="serial">시리얼 포트</option>
-                            <option value="bluetooth">블루투스 LE</option>
+                            <option value="serial" data-translate="serialPort">시리얼 포트</option>
+                            <option value="bluetooth" data-translate="bluetoothLE">블루투스 LE</option>
                         </select>
                     </div>
                     <div id="serialSettings">
                          <div class="form-group">
-                            <label for="baudRate">보드레이트</label>
+                            <label for="baudRate" data-translate="baudRateLabel">보드레이트</label>
                             <select id="baudRate">
                                 <option value="9600" selected>9600</option>
                                 <option value="115200">115200</option>
@@ -290,24 +50,24 @@
                     </div>
                     <div id="bleSettings" style="display: none;">
                         <div class="form-group">
-                            <label for="bleDeviceType">BLE 장치</label>
+                            <label for="bleDeviceType" data-translate="bleDevice">BLE 장치</label>
                             <select id="bleDeviceType">
-                                <option value="microbit">마이크로비트</option>
-                                <option value="generic">일반 UART 장치</option>
+                                <option value="microbit" data-translate="microbit">마이크로비트</option>
+                                <option value="generic" data-translate="genericUart">ESP32, PICO-W</option>
                             </select>
                         </div>
                     </div>
-                    <button id="connectBtn" class="btn btn-connect">시리얼 연결</button>
+                    <button id="connectBtn" class="btn btn-connect" data-translate="connectSerial">시리얼 연결</button>
                 </div>
 
                 <div class="section">
-                    <h3>센서 설정</h3>
+                    <h3 data-translate="sensorSettings">센서 설정</h3>
                     <div class="form-group">
-                        <label for="sensorCount">센서 개수</label>
+                        <label for="sensorCount" data-translate="sensorCount">센서 개수</label>
                         <input type="number" id="sensorCount" value="1" min="1" max="10">
                     </div>
                     <div class="sensor-section-header">
-                         <label>센서 이름 설정</label>
+                         <label data-translate="sensorNameSettings">센서 이름 설정</label>
                          <div id="sensorInputs" class="sensor-inputs-container">
                             </div>
                     </div>
@@ -315,22 +75,22 @@
 
                 <div class="section-no-border">
                     <div class="button-group">
-                        <button id="startLogging" class="btn btn-start">시작</button>
-                        <button id="pauseLogging" class="btn btn-pause" disabled>일시정지</button>
-                        <button id="stopLogging" class="btn btn-stop" disabled>정지</button>
+                        <button id="startLogging" class="btn btn-start" data-translate="start">시작</button>
+                        <button id="pauseLogging" class="btn btn-pause" disabled data-translate="pause">일시정지</button>
+                        <button id="stopLogging" class="btn btn-stop" disabled data-translate="stop">정지</button>
                     </div>
-                    <a href="information.html" target="_blank" class="btn btn-info">정보</a>
+                    <a href="information.html" target="_blank" class="btn btn-info" data-translate="info">정보</a>
                 </div>
             </div>
 
             <div class="right-panel">
                  <div class="logs-container">
                     <div class="log-section">
-                        <h4>콘솔 로그</h4>
+                        <h4 data-translate="consoleLog">콘솔 로그</h4>
                         <div id="consoleLog" class="log-content"></div>
                     </div>
                     <div class="log-section">
-                        <h4>수신 데이터 로그</h4>
+                        <h4 data-translate="receivedDataLog">수신 데이터 로그</h4>
                         <div id="dataLog" class="log-content"></div>
                     </div>
                 </div>
@@ -357,6 +117,13 @@ const MAX_VIEW_SECONDS = 60;
 const BLE_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"; // Nordic UART Service
 const BLE_CHAR_UUID_RECEIVE = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // TX Characteristic (micro:bit -> computer)
 const sensorColors = ['#E6194B', '#4363d8', '#FFD700', '#3cb44b', '#911eb4', '#f58231', '#46f0f0', '#f032e6', '#000075', '#bfef45'];
+const languages = {
+    "en": "English", "ko": "한국어", "ja": "日本語", "zh-CN": "简体中文", "es": "Español",
+    "fr": "Français", "de": "Deutsch", "ru": "Русский", "pt": "Português", "it": "Italiano",
+    "vi": "Tiếng Việt", "th": "ไทย", "id": "Bahasa Indonesia", "ar": "العربية", "hi": "हिन्दी",
+    "tr": "Türkçe", "nl": "Nederlands", "pl": "Polski", "sv": "Svenska", "fi": "Suomi",
+    "da": "Dansk", "no": "Norsk"
+};
 
 // --- UI 요소 ---
 const ui = {
@@ -370,15 +137,60 @@ const ui = {
     serialSettingsDiv: document.getElementById('serialSettings'),
     bleSettingsDiv: document.getElementById('bleSettings'),
     bleDeviceTypeSelect: document.getElementById('bleDeviceType'),
+    languageSelector: document.getElementById('languageSelector')
 };
 
 // --- 초기화 ---
 document.addEventListener('DOMContentLoaded', () => {
     initializeChart();
+    populateLanguageSelector();
+    loadLanguage(localStorage.getItem('selectedLanguage') || 'ko');
     setupEventListeners();
     updateSensorInputs();
     logMessage('Application initialized successfully.');
 });
+
+// --- 언어 및 번역 기능 ---
+function populateLanguageSelector() {
+    for (const [code, name] of Object.entries(languages)) {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = name;
+        ui.languageSelector.appendChild(option);
+    }
+}
+
+async function loadLanguage(langCode) {
+    try {
+        const response = await fetch(`translations/${langCode}.json`);
+        if (!response.ok) {
+            throw new Error(`언어 파일 로드 실패: ${response.statusText}`);
+        }
+        const translations = await response.json();
+        applyTranslations(translations);
+        ui.languageSelector.value = langCode;
+        localStorage.setItem('selectedLanguage', langCode);
+    } catch (error) {
+        console.error(error);
+        logMessage(`언어 '${langCode}'를 불러올 수 없습니다. 기본 언어로 계속합니다.`);
+    }
+}
+
+function applyTranslations(translations) {
+    document.querySelectorAll('[data-translate]').forEach(element => {
+        const key = element.getAttribute('data-translate');
+        if (translations[key]) {
+            element.textContent = translations[key];
+        }
+    });
+    if (chart && translations.chartTimeAxis && translations.chartValueAxis) {
+        chart.options.scales.x.title.text = translations.chartTimeAxis;
+        chart.options.scales.y.title.text = translations.chartValueAxis;
+        chart.update('none');
+    }
+    updateConnectionUI();
+}
+
 
 function initializeChart() {
     if (typeof Chart === 'undefined') {
@@ -407,6 +219,7 @@ function initializeChart() {
 
 function setupEventListeners() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    ui.languageSelector.addEventListener('change', (e) => loadLanguage(e.target.value));
     ui.connectBtn.addEventListener('click', toggleConnection);
     ui.deviceTypeSelect.addEventListener('change', updateConnectionUI);
     ui.sensorCountInput.addEventListener('input', updateSensorInputs);
@@ -420,16 +233,28 @@ function updateConnectionUI() {
     const deviceType = ui.deviceTypeSelect.value;
     const isConnected = serialPort || (bleDevice && bleDevice.gatt.connected);
 
-    if (isConnected) return; // 연결 상태일 때는 UI를 변경하지 않음
+    if (isConnected) return;
 
     if (deviceType === 'serial') {
         ui.serialSettingsDiv.style.display = 'block';
         ui.bleSettingsDiv.style.display = 'none';
-        ui.connectBtn.textContent = '시리얼 연결';
-    } else { // bluetooth
+        ui.connectBtn.setAttribute('data-translate', 'connectSerial');
+    } else {
         ui.serialSettingsDiv.style.display = 'none';
         ui.bleSettingsDiv.style.display = 'block';
-        ui.connectBtn.textContent = 'BLE 스캔';
+        ui.connectBtn.setAttribute('data-translate', 'connectBLE');
+    }
+
+    const lang = ui.languageSelector.value;
+    if (lang) {
+        fetch(`translations/${lang}.json`)
+            .then(res => res.json())
+            .then(translations => {
+                const key = ui.connectBtn.getAttribute('data-translate');
+                if (translations[key]) {
+                    ui.connectBtn.textContent = translations[key];
+                }
+            });
     }
 }
 
@@ -441,37 +266,27 @@ function processDataLine(line) {
 
     if (!isLogging || isPaused) return;
 
-    // 'DATA,' 접두사가 있는지 확인하고, 있다면 그 부분만 잘라냅니다.
-    // 대소문자를 구분하지 않고, 앞뒤 공백도 제거해서 안정성을 높였습니다.
     let dataPart = line.trim();
     if (dataPart.toUpperCase().startsWith('DATA,')) {
         dataPart = dataPart.substring(5).trim();
     }
 
-    // 데이터 처리를 시작합니다.
     if (!chartStartTime) chartStartTime = currentTime;
     const elapsedSeconds = (currentTime - chartStartTime) / 1000;
 
     try {
-        // 쉼표(,)로 구분된 값들을 각각 숫자로 변환합니다.
         const values = dataPart.split(',').map(v => parseFloat(v.trim()));
-        
-        // 변환된 값 중에 숫자가 아닌 것이 있는지 확인합니다.
         if (values.some(isNaN)) {
-            // 숫자가 아닌 값이 있다면 오류 메시지를 남기고 이 데이터는 무시합니다.
-            // throw new Error('데이터에 숫자가 아닌 값이 포함되어 있습니다.'); // 오류를 던지는 대신 로그만 남김
             logMessage(`데이터 처리 경고: 숫자가 아닌 값이 포함되어 건너뜁니다 -> "${line}"`);
             return;
         }
 
-        // 각 숫자 값을 차트에 추가합니다.
         values.forEach((value, i) => {
             if (chart.data.datasets[i]) {
                 chart.data.datasets[i].data.push({ x: elapsedSeconds, y: value });
             }
         });
         
-        // CSV 파일 저장을 위해 데이터를 배열에 추가합니다.
         csvData.push([currentTime.toLocaleDateString('ko-KR'), timeWithMs, ...values]);
     } catch (error) {
         logMessage(`데이터 처리 오류: [${line}] -> ${error.message}`);
@@ -479,7 +294,7 @@ function processDataLine(line) {
 }
 
 function renderChart() {
-    if (!isLogging || isPaused || !chart.data.datasets.length || chart.data.datasets[0].data.length < 2) {
+    if (!isLogging || isPaused || !chart.data.datasets.length || !chart.data.datasets[0] || chart.data.datasets[0].data.length < 2) {
         animationFrameId = requestAnimationFrame(renderChart);
         return;
     }
@@ -526,23 +341,30 @@ function startLogging() {
     }
     isLogging = true; isPaused = false; chartMode = 'EXPANDING'; chartStartTime = null;
     csvData = [['날짜', '시간(ms포함)', ...sensorNames]];
+    
     if (chart && chart.data.datasets) {
         chart.data.datasets.forEach(dataset => dataset.data = []);
         chart.update();
     }
+    
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     animationFrameId = requestAnimationFrame(renderChart);
 
     ui.startBtn.disabled = true;
     ui.pauseBtn.disabled = false;
-    ui.pauseBtn.textContent = '일시정지';
+    ui.pauseBtn.textContent = document.querySelector('[data-translate="pause"]').textContent;
     ui.stopBtn.disabled = false;
     logMessage('로깅 시작');
 }
 
 function togglePause() {
     isPaused = !isPaused;
-    ui.pauseBtn.textContent = isPaused ? '재개' : '일시정지';
+    const lang = ui.languageSelector.value;
+    fetch(`translations/${lang}.json`)
+        .then(res => res.json())
+        .then(translations => {
+            ui.pauseBtn.textContent = isPaused ? (translations.resume || '재개') : (translations.pause || '일시정지');
+        });
     logMessage(isPaused ? '로깅 일시정지' : '로깅 재개');
 }
 
@@ -554,7 +376,14 @@ function stopLogging() {
     }
     ui.startBtn.disabled = false;
     ui.pauseBtn.disabled = true;
-    ui.pauseBtn.textContent = '일시정지';
+
+    const lang = ui.languageSelector.value;
+    fetch(`translations/${lang}.json`)
+        .then(res => res.json())
+        .then(translations => {
+            ui.pauseBtn.textContent = translations.pause || '일시정지';
+        });
+
     ui.stopBtn.disabled = true;
     logMessage('로깅 중지');
     if (csvData.length > 1) downloadCSV();
@@ -564,30 +393,48 @@ function stopLogging() {
 function updateSensorInputs() {
     const count = parseInt(ui.sensorCountInput.value, 10) || 0;
     ui.sensorInputsContainer.innerHTML = '';
-    sensorNames = [];
+    
+    const newSensorNames = [];
     for (let i = 0; i < count; i++) {
-        const defaultName = `센서 ${i + 1}`;
-        sensorNames.push(defaultName);
+        const defaultNameKey = `sensorDefaultName`;
+        const defaultName = sensorNames[i] || `${document.querySelector(`[data-translate="${defaultNameKey}"]`)?.textContent || '센서'} ${i + 1}`;
+        newSensorNames.push(defaultName);
+        
         const inputGroup = document.createElement('div');
         inputGroup.className = 'sensor-input-group';
         inputGroup.innerHTML = `<label>센서 ${i + 1}:</label><input type="text" value="${defaultName}">`;
+        
         inputGroup.querySelector('input').addEventListener('input', (e) => {
-            sensorNames[i] = e.target.value.trim() || defaultName;
+            sensorNames[i] = e.target.value.trim() || `${document.querySelector(`[data-translate="${defaultNameKey}"]`)?.textContent || '센서'} ${i + 1}`;
             updateChartDatasets();
         });
         ui.sensorInputsContainer.appendChild(inputGroup);
     }
+    sensorNames = newSensorNames;
     updateChartDatasets();
 }
 
 function updateChartDatasets() {
     if (!chart) return;
-    chart.data.datasets = sensorNames.map((name, i) => ({
-        label: name, data: [], borderColor: sensorColors[i % sensorColors.length],
-        tension: 0.1, pointRadius: 1, borderWidth: 1,
-    }));
+
+    sensorNames.forEach((name, i) => {
+        if (chart.data.datasets[i]) {
+            chart.data.datasets[i].label = name;
+        } else {
+            chart.data.datasets[i] = {
+                label: name, data: [], borderColor: sensorColors[i % sensorColors.length],
+                tension: 0.1, pointRadius: 1, borderWidth: 1,
+            };
+        }
+    });
+
+    if (chart.data.datasets.length > sensorNames.length) {
+        chart.data.datasets.splice(sensorNames.length);
+    }
+
     chart.update();
 }
+
 
 // --- 연결 관리 ---
 async function toggleConnection() {
@@ -602,7 +449,6 @@ async function toggleConnection() {
     }
 }
 
-// --- 시리얼 연결 로직 ---
 async function connectSerial() {
     if (!('serial' in navigator)) return alert('Web Serial API가 지원되지 않는 브라우저입니다.');
     try {
@@ -610,9 +456,20 @@ async function connectSerial() {
         serialPort = await navigator.serial.requestPort();
         await serialPort.open({ baudRate: parseInt(document.getElementById('baudRate').value, 10) });
         logMessage(`시리얼 포트 연결 완료`);
-        ui.connectBtn.textContent = '연결 해제';
+
+        const lang = ui.languageSelector.value;
+        fetch(`translations/${lang}.json`)
+            .then(res => res.json())
+            .then(translations => {
+                ui.connectBtn.textContent = translations.disconnect || '연결 해제';
+            })
+            .catch(err => {
+                console.error("번역 파일 로드 실패:", err);
+                ui.connectBtn.textContent = '연결 해제';
+            });
+        
         ui.connectBtn.className = 'btn btn-disconnect';
-        await requestWakeLock(); // 화면 잠금 요청
+        await requestWakeLock();
         keepReading = true;
         readFromSerial();
     } catch (error) {
@@ -636,8 +493,8 @@ async function disconnectSerial() {
         try { await serialPort.close(); } catch(e){}
         serialPort = null;
     }
-    ui.connectBtn.textContent = '시리얼 연결';
     ui.connectBtn.className = 'btn btn-connect';
+    updateConnectionUI();
     logMessage('시리얼 연결 해제 완료');
 }
 
@@ -671,11 +528,9 @@ const requestWakeLock = async () => {
         try {
             wakeLockSentinel = await navigator.wakeLock.request('screen');
             wakeLockSentinel.addEventListener('release', () => {
-                // 이 이벤트는 탭이 최소화되는 등 자동으로 해제될 때 발생하므로,
-                // 로그만 남기고 사용자가 다시 탭으로 돌아왔을 때 재요청될 수 있도록 합니다.
                 logMessage('💡 화면 잠금(Wake Lock)이 시스템에 의해 해제되었습니다.');
             });
-            logMessage('✅ 화면 잠금(Wake Lock) 활성화됨. 데이터 수집 중에는 절전 모드로 전환되지 않습니다.');
+            logMessage('✅ 화면 잠금(Wake Lock) 활성화됨.');
         } catch (err) {
             logMessage(`❌ 화면 잠금 활성화 실패: ${err.name}, ${err.message}`);
         }
@@ -685,33 +540,12 @@ const requestWakeLock = async () => {
 };
 
 const handleVisibilityChange = async () => {
-    // 연결이 활성 상태이고, 사용자가 페이지를 다시 보고 있으며, 이전에 잠금을 획득했던 경우
     const isConnected = serialPort || (bleDevice && bleDevice.gatt.connected);
     if (isConnected && document.visibilityState === 'visible') {
         logMessage('페이지가 다시 활성화되어 화면 잠금을 재요청합니다.');
         await requestWakeLock();
     }
 };
-
-// --- 블루투스 LE 연결 로직 (안정성 강화) ---
-async function connectGattWithRetry(device, retries = 3, delay = 300) {
-    for (let i = 0; i < retries; i++) {
-        try {
-            if (device.gatt.connected) return device.gatt;
-            logMessage(`GATT 연결 시도 (${i + 1}/${retries})...`);
-            const server = await device.gatt.connect();
-            logMessage('GATT 서버 객체 반환됨.');
-            return server;
-        } catch (error) {
-            logMessage(`GATT 연결 시도 ${i + 1} 실패: ${error.message}`);
-            if (i < retries - 1) {
-                await new Promise(resolve => setTimeout(resolve, delay));
-            } else {
-                throw new Error('GATT 서버 연결에 최종 실패했습니다.');
-            }
-        }
-    }
-}
 
 async function connectBLE() {
     if (!('bluetooth' in navigator)) return alert('Web Bluetooth API가 지원되지 않는 브라우저입니다.');
@@ -722,59 +556,46 @@ async function connectBLE() {
         : { filters: [{ services: [BLE_SERVICE_UUID] }] };
 
     try {
-        logMessage(`'${devType}' 유형으로 BLE 장치 스캔 중...`);
+        logMessage(`BLE 장치 스캔 중...`);
         bleDevice = await navigator.bluetooth.requestDevice(opts);
         logMessage(`장치 선택: ${bleDevice.name || bleDevice.id}`);
-
         bleDevice.addEventListener('gattserverdisconnected', onBLEDisconnected);
-
-        const server = await connectGattWithRetry(bleDevice);
+        const server = await bleDevice.gatt.connect();
         
-        // --- 수정된 부분 ---
-        // GATT 연결이 성공한 직후, 바로 버튼 상태를 '연결 해제'로 변경합니다.
-        logMessage('GATT 연결됨. UI를 \'연결 해제\' 상태로 업데이트합니다.');
-        ui.connectBtn.textContent = '연결 해제';
+        const lang = ui.languageSelector.value;
+        fetch(`translations/${lang}.json`)
+            .then(res => res.json())
+            .then(translations => {
+                ui.connectBtn.textContent = translations.disconnect || '연결 해제';
+            })
+            .catch(err => {
+                console.error("번역 파일 로드 실패:", err);
+                ui.connectBtn.textContent = '연결 해제';
+            });
+
         ui.connectBtn.className = 'btn btn-disconnect';
-        await requestWakeLock(); // 화면 잠금 요청
-        // --- 여기까지 수정 ---
+        await requestWakeLock();
 
-        logMessage('서비스 탐색 전 500ms 대기...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        logMessage(`서비스(${BLE_SERVICE_UUID}) 탐색 중...`);
         const service = await server.getPrimaryService(BLE_SERVICE_UUID);
-        logMessage('서비스 가져오기 완료');
-        
         bleCharacteristic = await service.getCharacteristic(BLE_CHAR_UUID_RECEIVE);
-        logMessage('특성 가져오기 완료');
-
         await bleCharacteristic.startNotifications();
         bleCharacteristic.addEventListener('characteristicvaluechanged', handleBleNotification);
-        
-        logMessage('✅ BLE 장치가 성공적으로 연결되고 알림이 설정되었습니다.');
-        // 버튼 업데이트 코드는 위로 옮겼으므로 여기서는 필요 없습니다.
+        logMessage('✅ BLE 장치가 성공적으로 연결되었습니다.');
 
     } catch (error) {
-        logMessage(`BLE 연결 과정 실패: ${error.message}`);
-        if (bleDevice) {
-            // 연결 과정에서 오류가 발생하면 연결을 끊고 UI를 정리합니다.
-            // gatt.disconnect()는 onBLEDisconnected 이벤트 핸들러를 트리거합니다.
-            if (bleDevice.gatt.connected) {
-                bleDevice.gatt.disconnect();
-            } else {
-                // GATT 연결조차 실패한 경우, 수동으로 정리 함수를 호출합니다.
-                onBLEDisconnected();
-            }
+        logMessage(`BLE 연결 실패: ${error.message}`);
+        if (bleDevice && bleDevice.gatt.connected) {
+            bleDevice.gatt.disconnect();
+        } else {
+            onBLEDisconnected();
         }
     }
 }
-
 
 async function disconnectBLE() {
     logMessage('수동으로 BLE 연결 해제를 시도합니다...');
     if (bleDevice && bleDevice.gatt.connected) {
         bleDevice.gatt.disconnect();
-        // 실제 정리는 onBLEDisconnected 이벤트 핸들러에서 수행됩니다.
     } else {
         logMessage('이미 연결이 끊어졌거나 연결된 장치가 없습니다.');
     }
@@ -782,41 +603,19 @@ async function disconnectBLE() {
 
 function onBLEDisconnected() {
     if (wakeLockSentinel) {
-        wakeLockSentinel.release();
-        wakeLockSentinel = null;
+        wakeLockSentinel.release(); wakeLockSentinel = null;
     }
-    const deviceName = bleDevice ? (bleDevice.name || '알 수 없는 장치') : '알 수 없는 장치';
-    logMessage(`gattserverdisconnected 이벤트 수신됨. '${deviceName}'의 모든 리소스를 정리합니다.`);
-
-    // 1. 진행 중인 작업 중지
-    if (isLogging) {
-        stopLogging();
-    }
-
-    // 2. 이벤트 리스너 정리
+    logMessage(`BLE 장치 연결 해제됨.`);
+    if (isLogging) stopLogging();
     if (bleCharacteristic) {
-        try {
-            bleCharacteristic.removeEventListener('characteristicvaluechanged', handleBleNotification);
-            logMessage('characteristicvaluechanged 리스너 제거 완료.');
-        } catch(e) {
-            logMessage('characteristicvaluechanged 리스너 제거 중 오류 발생 (무시 가능).');
-        }
+        bleCharacteristic.removeEventListener('characteristicvaluechanged', handleBleNotification);
     }
-    if (bleDevice) {
-        bleDevice.removeEventListener('gattserverdisconnected', onBLEDisconnected);
-        logMessage('gattserverdisconnected 리스너 제거 완료.');
-    }
-
-    // 3. 전역 변수 초기화
     bleCharacteristic = null;
     bleDevice = null;
-    logMessage('전역 BLE 변수가 null로 설정되었습니다.');
-
-    // 4. UI 업데이트
     ui.connectBtn.className = 'btn btn-connect';
-    updateConnectionUI(); // 버튼 텍스트 등을 올바르게 설정합니다.
-    logMessage('UI가 "연결 해제" 상태로 업데이트되었습니다.');
+    updateConnectionUI();
 }
+
 
 let blePartialLine = '';
 const bleDecoder = new TextDecoder('utf-8');
