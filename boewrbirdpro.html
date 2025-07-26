@@ -138,18 +138,20 @@
         .button-group .btn {
             flex: 1;
         }
-        .btn-serial-connect { 
-            background-color: #90EE90; 
-            color: #2E8B57; 
-            border: 2px solid #2E8B57;
+        /* [수정] 버튼 CSS */
+        .btn-serial-connect {
+            background-color: #4CAF50; /* 초록색 */
+            color: white;
         }
-        .btn-serial-connect:hover:not(:disabled) { 
-            background-color: #98FB98; 
+        .btn-serial-connect:hover:not(:disabled) {
+            background-color: #45a049;
         }
-        .btn-serial-disconnect { 
-            background-color: #F08080; 
-            color: white; 
-            border: 2px solid #CD5C5C;
+        .btn-serial-disconnect {
+            background-color: #f44336; /* 빨간색 */
+            color: white;
+        }
+        .btn-serial-disconnect:hover:not(:disabled) {
+            background-color: #d32f2f;
         }
         .btn-start { background-color: #98FB98; color: #2E8B57; }
         .btn-start:hover:not(:disabled) { background-color: #90EE90; }
@@ -159,37 +161,31 @@
         .btn-stop:hover:not(:disabled) { background-color: #CD5C5C; }
         .btn-info { background-color: #ADD8E6; color: #1E90FF; }
         .btn-info:hover { background-color: #87CEEB; }
-        
-        /* 센서 이름 설정 스타일 */
+
         .sensor-section-header {
             margin-bottom: 15px;
         }
-        
         .sensor-section-header label {
             font-weight: 500;
             color: #555;
             display: block;
             margin-bottom: 10px;
         }
-        
         .sensor-inputs-container {
             border: 1px solid #E0E0E0;
             border-radius: 5px;
             padding: 15px;
             background-color: #FAFAFA;
         }
-        
         .sensor-input-group {
             display: flex;
             align-items: center;
             margin-bottom: 10px;
             gap: 10px;
         }
-        
         .sensor-input-group:last-child {
             margin-bottom: 0;
         }
-        
         .sensor-input-group label {
             flex-shrink: 0;
             width: 60px;
@@ -197,7 +193,6 @@
             color: #555;
             font-size: 14px;
         }
-        
         .sensor-input-group input {
             flex: 1;
             padding: 6px 8px;
@@ -205,7 +200,6 @@
             border-radius: 4px;
             font-size: 13px;
         }
-        
         .right-panel {
             display: grid;
             grid-template-rows: 250px 1fr;
@@ -314,8 +308,7 @@
                     <div class="sensor-section-header">
                          <label>센서 이름 설정</label>
                          <div id="sensorInputs" class="sensor-inputs-container">
-                            <!-- 센서 입력 칸들이 여기에 동적으로 생성됩니다 -->
-                        </div>
+                            </div>
                     </div>
                 </div>
 
@@ -351,11 +344,24 @@
 // --- 전역 변수 ---
 let chart, serialPort, serialReader;
 let isLogging = false, isPaused = false, keepReading = false;
-let csvData = [], sensorNames = [], sensorColors = ['#FF0000', '#FFA500', '#FFFF00', '#00FF00', '#0000FF', '#800080', '#FFC0CB', '#808080', '#00FFFF', '#90EE90'];
+let csvData = [], sensorNames = [];
+let sensorColors = [
+    '#E6194B', // 빨강
+    '#4363d8', // 파랑
+    '#FFD700', // 노랑(Gold)
+    '#3cb44b', // 초록
+    '#911eb4', // 보라
+    '#f58231', // 주황
+    '#46f0f0', // 청록
+    '#f032e6', // 분홍(마젠타)
+    '#000075', // 남색
+    '#bfef45'  // 라임
+];
 let chartStartTime = null;
-let totalDataPoints = 0;
-let dataIntervals = []; // 데이터 간격 추적
-let avgDataInterval = 1000; // 평균 데이터 간격(ms)
+
+let chartMode = 'EXPANDING';
+let animationFrameId = null;
+const MAX_VIEW_SECONDS = 60;
 
 const ui = {
     connectBtn: document.getElementById('connectSerial'),
@@ -366,159 +372,47 @@ const ui = {
     sensorInputsContainer: document.getElementById('sensorInputs')
 };
 
-// --- 초기화 ---
 document.addEventListener('DOMContentLoaded', () => {
-    if (typeof Chart === 'undefined') {
-        setTimeout(() => {
-            if (typeof Chart !== 'undefined') {
-                initializeChart();
-                setupEventListeners();
-                updateSensorInputs(); 
-                logMessage('Application initialized successfully.');
-            } else {
-                logMessage('Chart.js 로딩 실패. 페이지를 새로고침해주세요.');
-            }
-        }, 500);
-    } else {
-        initializeChart();
-        setupEventListeners();
-        updateSensorInputs(); 
-        logMessage('Application initialized successfully.');
-    }
+    initializeChart();
+    setupEventListeners();
+    updateSensorInputs();
+    logMessage('Application initialized successfully.');
 });
 
 function initializeChart() {
     if (typeof Chart === 'undefined') {
-        logMessage('Chart.js가 아직 로드되지 않았습니다.');
+        logMessage('Chart.js가 로드되지 않았습니다.');
         return;
     }
-    
     const ctx = document.getElementById('dataChart').getContext('2d');
     chart = new Chart(ctx, {
         type: 'line',
         data: { datasets: [] },
         options: {
-            responsive: true, 
-            maintainAspectRatio: false, 
+            responsive: true,
+            maintainAspectRatio: false,
             animation: false,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            // 줌 및 팬 기능 활성화
+            interaction: { intersect: false, mode: 'index' },
             plugins: {
                 zoom: {
-                    zoom: {
-                        wheel: {
-                            enabled: true,
-                            speed: 0.1
-                        },
-                        pinch: {
-                            enabled: true
-                        },
-                        mode: 'x',
-                        onZoomComplete: function({chart}) {
-                            // 줌 완료 후 자동 스크롤 일시 정지
-                            chart.isUserZooming = true;
-                            setTimeout(() => {
-                                chart.isUserZooming = false;
-                            }, 3000); // 3초 후 자동 스크롤 재개
-                        }
-                    },
-                    pan: {
-                        enabled: true,
-                        mode: 'x',
-                        onPanComplete: function({chart}) {
-                            // 팬 완료 후 자동 스크롤 일시 정지
-                            chart.isUserZooming = true;
-                            setTimeout(() => {
-                                chart.isUserZooming = false;
-                            }, 3000);
-                        }
-                    }
+                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+                    pan: { enabled: true, mode: 'x' }
                 },
-                legend: { 
-                    display: true,
-                    position: 'top',
-                    align: 'end',
-                    labels: { 
-                        color: '#333',
-                        usePointStyle: true,
-                        pointStyle: 'line',
-                        padding: 15,
-                        font: {
-                            size: 12
-                        }
-                    } 
-                },
-                tooltip: {
-                    callbacks: {
-                        title: function(context) {
-                            if (chartStartTime && context[0]) {
-                                const seconds = context[0].parsed.x;
-                                const date = new Date(chartStartTime.getTime() + seconds * 1000);
-                                return date.toLocaleTimeString('ko-KR') + '.' + date.getMilliseconds().toString().padStart(3, '0');
-                            }
-                            return '';
-                        }
-                    }
-                }
+                legend: { display: true, position: 'top', align: 'end' }
             },
             scales: {
-                x: { 
+                x: {
                     type: 'linear',
-                    title: { 
-                        display: true, 
-                        text: '시간', 
-                        color: '#555' 
-                    }, 
-                    ticks: { 
-                        color: '#555',
-                        maxTicksLimit: 8,
-                        callback: function(value, index, values) {
-                            if (chartStartTime) {
-                                const date = new Date(chartStartTime.getTime() + value * 1000);
-                                
-                                // 데이터 간격에 따른 동적 포맷
-                                if (avgDataInterval < 500) {
-                                    // 0.5초 미만: ms 표시
-                                    return date.toLocaleTimeString('ko-KR', { 
-                                        hour12: false, 
-                                        minute: '2-digit', 
-                                        second: '2-digit' 
-                                    }) + '.' + date.getMilliseconds().toString().padStart(3, '0');
-                                } else if (avgDataInterval < 5000) {
-                                    // 5초 미만: 초 표시
-                                    return date.toLocaleTimeString('ko-KR', { 
-                                        hour12: false, 
-                                        minute: '2-digit', 
-                                        second: '2-digit' 
-                                    });
-                                } else {
-                                    // 5초 이상: 분:초 표시
-                                    return date.toLocaleTimeString('ko-KR', { 
-                                        hour12: false, 
-                                        minute: '2-digit', 
-                                        second: '2-digit' 
-                                    });
-                                }
-                            }
-                            return value;
-                        }
-                    }
+                    title: { display: true, text: '시간', color: '#555' },
+                    ticks: { color: '#555', maxTicksLimit: 10 }
                 },
-                y: { 
-                    title: { 
-                        display: true, 
-                        text: '값', 
-                        color: '#555' 
-                    }, 
-                    ticks: { color: '#555' } 
+                y: {
+                    title: { display: true, text: '값', color: '#555' },
+                    ticks: { color: '#555' }
                 }
             }
         }
     });
-    
     logMessage('차트가 초기화되었습니다.');
 }
 
@@ -530,426 +424,260 @@ function setupEventListeners() {
     ui.stopBtn.addEventListener('click', stopLogging);
 }
 
-// --- UI 업데이트 ---
+function renderChart() {
+    if (!isLogging || isPaused || !chart.data.datasets.length || chart.data.datasets[0].data.length < 2) {
+        animationFrameId = requestAnimationFrame(renderChart);
+        return;
+    }
+    const firstPoint = chart.data.datasets[0].data[0];
+    const lastPoint = chart.data.datasets[0].data[chart.data.datasets[0].data.length - 1];
+    const totalDuration = lastPoint.x - firstPoint.x;
+
+    if (chartMode === 'EXPANDING' && totalDuration > MAX_VIEW_SECONDS) {
+        chartMode = 'SHIFTING';
+    }
+
+    if (chartMode === 'EXPANDING') {
+        chart.options.scales.x.min = firstPoint.x;
+        chart.options.scales.x.max = lastPoint.x;
+    } else {
+        const visibleMax = lastPoint.x;
+        const visibleMin = visibleMax - MAX_VIEW_SECONDS;
+        chart.options.scales.x.min = visibleMin;
+        chart.options.scales.x.max = visibleMax;
+        chart.data.datasets.forEach(dataset => {
+            while (dataset.data.length > 2 && dataset.data[1].x < visibleMin) {
+                dataset.data.shift();
+            }
+        });
+    }
+    updateXAxisTicks(chart.options.scales.x.max - chart.options.scales.x.min);
+    chart.update('none');
+    animationFrameId = requestAnimationFrame(renderChart);
+}
+
+function processDataLine(line) {
+    const currentTime = new Date();
+    const timeWithMs = currentTime.toLocaleTimeString('ko-KR', { hour12: false }) + '.' + currentTime.getMilliseconds().toString().padStart(3, '0');
+
+    logDataMessage(`[${timeWithMs}] ${line}`);
+
+    if (!isLogging || isPaused || !line.startsWith('DATA,')) return;
+
+    if (!chartStartTime) {
+        chartStartTime = currentTime;
+    }
+    const elapsedSeconds = (currentTime - chartStartTime) / 1000;
+
+    try {
+        const values = line.substring(5).split(',').map(v => parseFloat(v));
+        if (values.some(isNaN)) throw new Error('데이터에 숫자가 아닌 값이 포함되어 있습니다.');
+
+        values.forEach((value, i) => {
+            if (chart.data.datasets[i]) {
+                chart.data.datasets[i].data.push({ x: elapsedSeconds, y: value });
+            }
+        });
+        const dateStr = currentTime.toLocaleDateString('ko-KR');
+        csvData.push([dateStr, timeWithMs, ...values]);
+    } catch (error) {
+        logMessage(`데이터 처리 오류: ${error.message}`);
+    }
+}
+
+function updateXAxisTicks(viewDuration) {
+    chart.options.scales.x.ticks.callback = function(value, index, values) {
+        if (!chartStartTime) return value;
+        const date = new Date(chartStartTime.getTime() + value * 1000);
+        if (viewDuration <= 10) {
+            return date.toLocaleTimeString('ko-KR', { hour12: false, minute: '2-digit', second: '2-digit' }) + '.' + date.getMilliseconds().toString().padStart(3, '0').substring(0,1);
+        } else if (viewDuration <= 120) {
+            return date.toLocaleTimeString('ko-KR', { hour12: false, minute: '2-digit', second: '2-digit' });
+        } else {
+            return date.toLocaleTimeString('ko-KR', { hour12: false });
+        }
+    };
+}
+
+function startLogging() {
+    if (!serialPort) {
+        alert('먼저 장치에 연결해주세요.');
+        return;
+    }
+    isLogging = true;
+    isPaused = false;
+    chartMode = 'EXPANDING';
+    chartStartTime = null;
+    csvData = [['날짜', '시간(ms포함)', ...sensorNames]];
+
+    if (chart && chart.data.datasets) {
+        chart.data.datasets.forEach(dataset => dataset.data = []);
+        chart.update();
+    }
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    animationFrameId = requestAnimationFrame(renderChart);
+
+    ui.startBtn.disabled = true;
+    ui.pauseBtn.disabled = false;
+    ui.pauseBtn.textContent = '일시정지';
+    ui.stopBtn.disabled = false;
+    logMessage('로깅 시작');
+}
+
+function togglePause() {
+    isPaused = !isPaused;
+    ui.pauseBtn.textContent = isPaused ? '재개' : '일시정지';
+    logMessage(isPaused ? '로깅 일시정지' : '로깅 재개');
+}
+
+function stopLogging() {
+    isLogging = false;
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    ui.startBtn.disabled = false;
+    ui.pauseBtn.disabled = true;
+    ui.pauseBtn.textContent = '일시정지';
+    ui.stopBtn.disabled = true;
+    logMessage('로깅 중지');
+    if (csvData.length > 1) downloadCSV();
+}
+
 function updateSensorInputs() {
     const count = parseInt(ui.sensorCountInput.value, 10) || 0;
     ui.sensorInputsContainer.innerHTML = '';
     sensorNames = [];
-
     for (let i = 0; i < count; i++) {
         const defaultName = `센서 ${i + 1}`;
         sensorNames.push(defaultName);
-
         const inputGroup = document.createElement('div');
         inputGroup.className = 'sensor-input-group';
-        
         const label = document.createElement('label');
         label.textContent = `센서 ${i + 1}:`;
-        
         const input = document.createElement('input');
         input.type = 'text';
         input.value = defaultName;
-        input.placeholder = `센서 ${i + 1} 이름`;
-        
         input.addEventListener('input', () => {
-            const newName = input.value.trim() || defaultName;
-            sensorNames[i] = newName;
+            sensorNames[i] = input.value.trim() || defaultName;
             updateChartDatasets();
         });
-
         inputGroup.appendChild(label);
         inputGroup.appendChild(input);
         ui.sensorInputsContainer.appendChild(inputGroup);
     }
-    
     updateChartDatasets();
 }
 
 function updateChartDatasets() {
-    if (!chart) {
-        logMessage('차트가 초기화되지 않았습니다.');
-        return;
-    }
-    
+    if (!chart) return;
     chart.data.datasets = sensorNames.map((name, i) => ({
         label: name,
         data: [],
         borderColor: sensorColors[i % sensorColors.length],
-        backgroundColor: sensorColors[i % sensorColors.length] + '20',
         tension: 0.1,
         pointRadius: 1,
-        pointHoverRadius: 3,
-        borderWidth: 2,
-        fill: false
+        borderWidth: 1,
     }));
     chart.update();
 }
 
-// --- 시리얼 통신 ---
 async function toggleSerialConnection() {
     if (serialPort) await disconnectSerial();
     else await connectSerial();
 }
 
 async function connectSerial() {
-    if (!('serial' in navigator)) {
-        alert('Web Serial API가 지원되지 않는 브라우저입니다. Chrome 브라우저를 사용해주세요.');
-        return;
-    }
-    
+    if (!('serial' in navigator)) return alert('Web Serial API가 지원되지 않는 브라우저입니다.');
     try {
         logMessage('시리얼 포트 연결 시도 중...');
-        
-        if (serialPort || serialReader) {
-            logMessage('기존 연결 정리 중...');
-            await disconnectSerial();
-            await new Promise(resolve => setTimeout(resolve, 500));
-        }
-        
         serialPort = await navigator.serial.requestPort();
+        await serialPort.open({ baudRate: parseInt(document.getElementById('baudRate').value, 10) });
+        logMessage(`시리얼 포트 연결 완료`);
         
-        if (serialPort.readable || serialPort.writable) {
-            logMessage('포트가 이미 열려있어 먼저 닫습니다...');
-            try {
-                await serialPort.close();
-                await new Promise(resolve => setTimeout(resolve, 300));
-            } catch (e) {
-                logMessage('기존 포트 닫기 실패, 계속 진행합니다.');
-            }
-        }
-        
-        const baudRate = parseInt(document.getElementById('baudRate').value, 10);
-        await serialPort.open({ baudRate: baudRate });
-        
-        logMessage(`시리얼 포트 연결 완료 (${baudRate} baud)`);
         ui.connectBtn.textContent = '연결 해제';
         ui.connectBtn.className = 'btn btn-serial-disconnect';
         keepReading = true;
         readFromSerial();
-        
     } catch (error) {
-        if (error.name === 'NotFoundError') {
-            logMessage('사용자가 포트 선택을 취소했습니다.');
-        } else {
-            logMessage(`연결 실패: ${error.message}`);
-        }
-        serialPort = null;
-        serialReader = null;
-        ui.connectBtn.textContent = '시리얼 연결';
-        ui.connectBtn.className = 'btn btn-serial-connect';
+        logMessage(`연결 실패: ${error.message}`);
     }
 }
 
 async function disconnectSerial() {
-    logMessage('시리얼 연결 해제 중...');
     keepReading = false;
-    
-    if (isLogging) {
-        stopLogging();
-    }
-    
-    try {
-        if (serialReader) {
-            try {
-                await serialReader.cancel();
-            } catch (e) {}
-            try {
-                serialReader.releaseLock();
-            } catch (e) {}
-            serialReader = null;
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        if (serialPort) {
-            try {
-                if (serialPort.readable || serialPort.writable) {
-                    await serialPort.close();
-                }
-            } catch (portError) {
-                logMessage(`포트 닫기 시도 중 오류 (무시됨): ${portError.message}`);
-            }
-            serialPort = null;
-        }
-        
-        ui.connectBtn.textContent = '시리얼 연결';
-        ui.connectBtn.className = 'btn btn-serial-connect';
-        logMessage('시리얼 연결 해제 완료');
-        
-    } catch (error) {
-        logMessage(`연결 해제 중 오류 발생, 강제 정리: ${error.message}`);
-        ui.connectBtn.textContent = '시리얼 연결';
-        ui.connectBtn.className = 'btn btn-serial-connect';
-        serialPort = null;
+    if (isLogging) stopLogging();
+    if (serialReader) {
+        // 이미 reader가 닫혔을 수 있으므로 에러를 무시함
+        try { await serialReader.cancel(); } catch(e){}
+        serialReader.releaseLock();
         serialReader = null;
-        logMessage('시리얼 연결 강제 해제 완료');
     }
+    if (serialPort) {
+        try { await serialPort.close(); } catch(e){}
+        serialPort = null;
+    }
+    
+    ui.connectBtn.textContent = '시리얼 연결';
+    ui.connectBtn.className = 'btn btn-serial-connect';
+    logMessage('시리얼 연결 해제 완료');
 }
 
+// [수정] 안정적인 readFromSerial 함수
 async function readFromSerial() {
-    if (!serialPort || !keepReading) return;
-    
+    if (!serialPort || !serialPort.readable) return;
+
+    const decoder = new TextDecoder('utf-8');
+    let partialLine = '';
+    serialReader = serialPort.readable.getReader();
+
     try {
-        logMessage('데이터 읽기 시작');
-        const textDecoder = new TextDecoderStream();
-        
-        if (!serialPort.readable) {
-            logMessage('시리얼 포트의 readable 스트림이 없습니다.');
-            return;
-        }
-        
-        const readableStreamClosed = serialPort.readable.pipeTo(textDecoder.writable);
-        serialReader = textDecoder.readable.getReader();
-        
-        let partialLine = '';
-        
-        while (keepReading && serialPort && serialReader) {
-            try {
-                const { value, done } = await serialReader.read();
-                if (done) {
-                    logMessage('시리얼 읽기 완료');
-                    break;
-                }
-                
-                if (value) {
-                    partialLine += value;
-                    const lines = partialLine.split('\n');
-                    partialLine = lines.pop() || '';
-                    
-                    for (const line of lines) {
-                        const trimmedLine = line.trim();
-                        if (trimmedLine) {
-                            processDataLine(trimmedLine);
-                        }
-                    }
-                }
-            } catch (readError) {
-                if (keepReading) {
-                    logMessage(`읽기 오류: ${readError.message}`);
-                }
+        while (keepReading) {
+            const { value, done } = await serialReader.read();
+            if (done) {
                 break;
             }
-        }
-        
-    } catch (error) {
-        if (keepReading) {
-            logMessage(`시리얼 읽기 실패: ${error.message}`);
-        }
-    } finally {
-        if (serialReader) {
-            try {
-                serialReader.releaseLock();
-            } catch (e) {}
-            serialReader = null;
-        }
-        logMessage('시리얼 읽기 종료');
-    }
-}
+            partialLine += decoder.decode(value, { stream: true });
+            const lines = partialLine.split('\n');
+            partialLine = lines.pop() || '';
 
-// --- 데이터 처리 및 로깅 ---
-let lastDataTime = null;
-
-function processDataLine(line) {
-    const currentTime = new Date();
-    
-    // 데이터 간격 계산 (로깅 중일 때만)
-    if (isLogging && !isPaused && lastDataTime) {
-        const interval = currentTime - lastDataTime;
-        dataIntervals.push(interval);
-        
-        // 최근 10개 간격의 평균 계산
-        if (dataIntervals.length > 10) {
-            dataIntervals.shift();
-        }
-        avgDataInterval = dataIntervals.reduce((a, b) => a + b, 0) / dataIntervals.length;
-    }
-    lastDataTime = currentTime;
-    
-    // 수신 데이터 로그에 ms 포함 시간과 함께 데이터 기록
-    if (line.startsWith('DATA,')) {
-        const dataOnly = line.substring(5);
-        const timeWithMs = currentTime.toLocaleTimeString('ko-KR', { hour12: false }) + 
-                          '.' + currentTime.getMilliseconds().toString().padStart(3, '0');
-        logDataMessage(`[${timeWithMs}] ${dataOnly}`);
-    } else {
-        const timeWithMs = currentTime.toLocaleTimeString('ko-KR', { hour12: false }) + 
-                          '.' + currentTime.getMilliseconds().toString().padStart(3, '0');
-        logDataMessage(`[${timeWithMs}] ${line}`);
-    }
-    
-    if (!isLogging || isPaused) {
-        return;
-    }
-    
-    if (line.startsWith('DATA,')) {
-        try {
-            const parts = line.split(',');
-            const values = parts.slice(1).map(v => {
-                const num = parseFloat(v);
-                if (isNaN(num)) {
-                    throw new Error(`잘못된 숫자: ${v}`);
+            lines.forEach(line => {
+                const trimmedLine = line.trim();
+                if (trimmedLine) {
+                    processDataLine(trimmedLine);
                 }
-                return num;
             });
-            
-            updateChart(currentTime, values);
-            
-            // CSV에 ms 포함 시간 저장
-            const dateStr = currentTime.toLocaleDateString('ko-KR');
-            const timeStr = currentTime.toLocaleTimeString('ko-KR', { hour12: false }) + 
-                           '.' + currentTime.getMilliseconds().toString().padStart(3, '0');
-            csvData.push([dateStr, timeStr, ...values]);
-            
-        } catch (error) {
-            logMessage(`데이터 파싱 오류: ${error.message}`);
+        }
+    } catch (error) {
+        logMessage(`읽기 오류: ${error.message}`);
+    } finally {
+        if(serialReader) {
+           serialReader.releaseLock();
         }
     }
 }
 
-function updateChart(time, values) {
-    if (!chart) return;
-    
-    if (!chartStartTime) {
-        chartStartTime = time;
-    }
-    
-    totalDataPoints++;
-    const elapsedSeconds = (time - chartStartTime) / 1000;
-    
-    values.forEach((value, i) => {
-        if (chart.data.datasets[i]) {
-            chart.data.datasets[i].data.push({ x: elapsedSeconds, y: value });
-            
-            if (chart.data.datasets[i].data.length > 300) {
-                chart.data.datasets[i].data.shift();
-            }
-        }
-    });
-    
-    updateXAxisRange();
-    chart.update('none');
-}
-
-function updateXAxisRange() {
-    if (!chart || !chartStartTime) return;
-    
-    const now = new Date();
-    const totalElapsed = (now - chartStartTime) / 1000;
-    
-    // 데이터 간격에 따른 동적 표시 범위
-    let visibleRange;
-    if (avgDataInterval < 200) {
-        visibleRange = 30; // 0.2초 미만: 30초
-    } else if (avgDataInterval < 1000) {
-        visibleRange = 60; // 1초 미만: 1분
-    } else if (avgDataInterval < 5000) {
-        visibleRange = 300; // 5초 미만: 5분
-    } else {
-        visibleRange = 600; // 5초 이상: 10분
-    }
-    
-    const maxX = totalElapsed;
-    const minX = Math.max(0, maxX - visibleRange);
-    
-    chart.options.scales.x.min = minX;
-    chart.options.scales.x.max = maxX;
-    
-function updateXAxisRange() {
-    if (!chart || !chartStartTime) return;
-    
-    const now = new Date();
-    const totalElapsed = (now - chartStartTime) / 1000;
-    
-    // 데이터 간격에 따른 동적 표시 범위
-    let visibleRange;
-    if (avgDataInterval < 200) {
-        visibleRange = 30; // 0.2초 미만: 30초
-    } else if (avgDataInterval < 1000) {
-        visibleRange = 60; // 1초 미만: 1분
-    } else if (avgDataInterval < 5000) {
-        visibleRange = 300; // 5초 미만: 5분
-    } else {
-        visibleRange = 600; // 5초 이상: 10분
-    }
-    
-    const maxX = totalElapsed;
-    const minX = Math.max(0, maxX - visibleRange);
-    
-    chart.options.scales.x.min = minX;
-    chart.options.scales.x.max = maxX;
-    
-    // 틱 간격 동적 조정
-    const tickCount = Math.min(8, Math.max(4, Math.floor(visibleRange / (avgDataInterval / 1000) * 0.1)));
-    chart.options.scales.x.ticks.maxTicksLimit = tickCount;
-}
-
-function startLogging() {
-    if (!serialPort) return alert('먼저 장치에 연결해주세요.');
-    isLogging = true;
-    isPaused = false;
-    chartStartTime = null;
-    totalDataPoints = 0;
-    dataIntervals = [];
-    avgDataInterval = 1000;
-    lastDataTime = null;
-    
-    // CSV 헤더에 날짜와 시간 분리, ms 포함
-    csvData = [['날짜', '시간(ms포함)', ...sensorNames]];
-    
-    if (chart && chart.data.datasets) {
-        chart.data.datasets.forEach(dataset => dataset.data = []);
-        chart.update();
-    }
-    
-    ui.startBtn.disabled = true;
-    ui.pauseBtn.disabled = false;
-    ui.pauseBtn.textContent = '일시정지';
-    ui.stopBtn.disabled = false;
-    logMessage('로깅 시작');
-}
-
-function togglePause() {
-    isPaused = !isPaused;
-    ui.pauseBtn.textContent = isPaused ? '재개' : '일시정지';
-    logMessage(isPaused ? '로깅 일시정지' : '로깅 재개');
-}
-
-function stopLogging() {
-    isLogging = false;
-    ui.startBtn.disabled = false;
-    ui.pauseBtn.disabled = true;
-    ui.pauseBtn.textContent = '일시정지';
-    ui.stopBtn.disabled = true;
-    logMessage('로깅 중지');
-    if (csvData.length > 1) downloadCSV();
-}
 
 function downloadCSV() {
     const csvContent = csvData.map(row => row.join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    
-    // 파일명에 시분초 포함 (24시간제)
     const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
-    const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, ''); // HHMMSS
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '');
     link.download = `Bowerbird_PRO_datalog_${dateStr}_${timeStr}.csv`;
-    
     link.click();
     logMessage(`CSV 파일 다운로드 완료: ${link.download}`);
 }
 
-// --- 유틸리티 ---
 function logMessage(message) {
     const log = document.getElementById('consoleLog');
     const timestamp = new Date().toLocaleTimeString('ko-KR', { hour12: false });
     log.textContent += `[${timestamp}] ${message}\n`;
     log.scrollTop = log.scrollHeight;
-    
-    const lines = log.textContent.split('\n');
-    if (lines.length > 300) {
-        log.textContent = lines.slice(-200).join('\n');
+    if (log.textContent.split('\n').length > 300) {
+        log.textContent = log.textContent.split('\n').slice(-200).join('\n');
     }
 }
 
@@ -957,92 +685,8 @@ function logDataMessage(message) {
     const log = document.getElementById('dataLog');
     log.textContent += message + '\n';
     log.scrollTop = log.scrollHeight;
-    
-    const lines = log.textContent.split('\n');
-    if (lines.length > 500) {
-        log.textContent = lines.slice(-400).join('\n');
-    }
-}
-}
-
-function startLogging() {
-    if (!serialPort) return alert('먼저 장치에 연결해주세요.');
-    isLogging = true;
-    isPaused = false;
-    chartStartTime = null;
-    totalDataPoints = 0;
-    dataIntervals = [];
-    avgDataInterval = 1000;
-    lastDataTime = null;
-    
-    // CSV 헤더에 날짜와 시간 분리, ms 포함
-    csvData = [['날짜', '시간(ms포함)', ...sensorNames]];
-    
-    if (chart && chart.data.datasets) {
-        chart.data.datasets.forEach(dataset => dataset.data = []);
-        chart.update();
-    }
-    
-    ui.startBtn.disabled = true;
-    ui.pauseBtn.disabled = false;
-    ui.pauseBtn.textContent = '일시정지';
-    ui.stopBtn.disabled = false;
-    logMessage('로깅 시작');
-}
-
-function togglePause() {
-    isPaused = !isPaused;
-    ui.pauseBtn.textContent = isPaused ? '재개' : '일시정지';
-    logMessage(isPaused ? '로깅 일시정지' : '로깅 재개');
-}
-
-function stopLogging() {
-    isLogging = false;
-    ui.startBtn.disabled = false;
-    ui.pauseBtn.disabled = true;
-    ui.pauseBtn.textContent = '일시정지';
-    ui.stopBtn.disabled = true;
-    logMessage('로깅 중지');
-    if (csvData.length > 1) downloadCSV();
-}
-
-function downloadCSV() {
-    const csvContent = csvData.map(row => row.join(',')).join('\n');
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    
-    // 파일명에 시분초 포함 (24시간제)
-    const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
-    const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, ''); // HHMMSS
-    link.download = `Bowerbird_PRO_datalog_${dateStr}_${timeStr}.csv`;
-    
-    link.click();
-    logMessage(`CSV 파일 다운로드 완료: ${link.download}`);
-}
-
-// --- 유틸리티 ---
-function logMessage(message) {
-    const log = document.getElementById('consoleLog');
-    const timestamp = new Date().toLocaleTimeString('ko-KR', { hour12: false });
-    log.textContent += `[${timestamp}] ${message}\n`;
-    log.scrollTop = log.scrollHeight;
-    
-    const lines = log.textContent.split('\n');
-    if (lines.length > 300) {
-        log.textContent = lines.slice(-200).join('\n');
-    }
-}
-
-function logDataMessage(message) {
-    const log = document.getElementById('dataLog');
-    log.textContent += message + '\n';
-    log.scrollTop = log.scrollHeight;
-    
-    const lines = log.textContent.split('\n');
-    if (lines.length > 500) {
-        log.textContent = lines.slice(-400).join('\n');
+    if (log.textContent.split('\n').length > 500) {
+        log.textContent = log.textContent.split('\n').slice(-400).join('\n');
     }
 }
 </script>
