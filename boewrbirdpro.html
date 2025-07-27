@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BOWERBIRD PRO - Real-Time Data Logger & Plotter (Serial + BLE)</title>
+    <title>BOWERBIRD PRO</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
     <link rel="stylesheet" href="style.css">
@@ -108,19 +108,21 @@ let bleDevice, bleCharacteristic;
 let isLogging = false, isPaused = false, keepReading = false;
 let csvData = [], sensorNames = [];
 let chartStartTime = null;
-let chartMode = 'EXPANDING'; // 차트 표시 모드: 'EXPANDING' (확장), 'SHIFTING' (이동)
-let animationFrameId = null; // renderChart 애니메이션 프레임 ID
-let wakeLockSentinel = null; // 화면 꺼짐 방지 Wake Lock 객체
+let chartMode = 'EXPANDING';
+let animationFrameId = null;
+let wakeLockSentinel = null;
+// ▼▼▼ 수정된 부분 ▼▼▼
+let currentTranslations = {}; // 현재 로드된 번역 데이터를 저장
+let currentLang = 'ko'; // 현재 선택된 언어 코드 저장
 
 // --- 상수 ---
-const MAX_VIEW_SECONDS = 60; // 차트가 이동(shifting) 모드로 변경되기 전까지의 최대 시간(초)
-const BLE_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"; // Nordic UART Service UUID
-const BLE_CHAR_UUID_RECEIVE = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // TX Characteristic UUID (데이터 수신)
+const MAX_VIEW_SECONDS = 60;
+const BLE_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+const BLE_CHAR_UUID_RECEIVE = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 const sensorColors = ['#E6194B', '#4363d8', '#FFD700', '#3cb44b', '#911eb4', '#f58231', '#46f0f0', '#f032e6', '#000075', '#bfef45'];
 const languages = {
     "ko": "한국어",
     "en": "English"
-    // 필요한 다른 언어들을 여기에 추가할 수 있습니다.
 };
 
 // --- UI 요소 객체 ---
@@ -139,34 +141,22 @@ const ui = {
 };
 
 // --- 애플리케이션 초기화 ---
-
-/**
- * DOM 콘텐츠가 모두 로드된 후 실행되는 메인 함수.
- * 차트, 언어 선택기, 이벤트 리스너 등을 초기화합니다.
- */
 document.addEventListener('DOMContentLoaded', () => {
     initializeChart();
     populateLanguageSelector();
-    
-    // 저장된 언어 또는 브라우저 기본 언어를 감지하여 로드
     const savedLang = localStorage.getItem('selectedLanguage');
     if (savedLang) {
         loadLanguage(savedLang);
     } else {
         const browserLang = navigator.language.split('-')[0];
-        loadLanguage(languages[browserLang] ? browserLang : 'ko'); // 지원하는 언어면 적용, 아니면 한국어 기본
+        loadLanguage(languages[browserLang] ? browserLang : 'ko');
     }
-
     setupEventListeners();
     updateSensorInputs();
-    logMessage('Application initialized successfully.');
+    logMessage('logAppInit');
 });
 
 // --- 언어 및 번역 기능 ---
-
-/**
- * `languages` 객체를 기반으로 언어 선택 드롭다운 메뉴를 동적으로 생성합니다.
- */
 function populateLanguageSelector() {
     for (const [code, name] of Object.entries(languages)) {
         const option = document.createElement('option');
@@ -176,58 +166,41 @@ function populateLanguageSelector() {
     }
 }
 
-/**
- * 선택된 언어의 번역 파일을 비동기적으로 로드하고 UI에 적용합니다.
- * @param {string} langCode - 로드할 언어의 코드 (예: 'ko', 'en').
- */
 async function loadLanguage(langCode) {
     try {
         const response = await fetch(`translations/${langCode}.json`);
-        if (!response.ok) {
-            throw new Error(`언어 파일 로드 실패: ${response.statusText}`);
-        }
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
         const translations = await response.json();
+        // ▼▼▼ 수정된 부분 ▼▼▼
+        currentTranslations = translations;
+        currentLang = langCode;
         applyTranslations(translations);
         ui.languageSelector.value = langCode;
-        localStorage.setItem('selectedLanguage', langCode); // 사용자가 선택한 언어를 저장
+        localStorage.setItem('selectedLanguage', langCode);
     } catch (error) {
         console.error(error);
-        logMessage(`언어 '${langCode}'를 불러올 수 없습니다. 기본 언어로 계속합니다.`);
+        logMessage('logLangLoadError', { langCode });
     }
 }
 
-/**
- * 로드된 번역 객체를 사용하여 `data-translate` 속성을 가진 모든 UI 요소의 텍스트를 변경합니다.
- * @param {object} translations - 언어 코드에 해당하는 번역 텍스트 객체.
- */
 function applyTranslations(translations) {
     document.querySelectorAll('[data-translate]').forEach(element => {
         const key = element.getAttribute('data-translate');
-        if (translations[key]) {
-            element.textContent = translations[key];
-        }
+        if (translations[key]) element.textContent = translations[key];
     });
-    // 페이지 제목도 번역
-    if(translations.pageTitleApp) {
-        document.title = translations.pageTitleApp;
-    }
-    // 차트 축 이름도 번역
+    if (translations.pageTitleApp) document.title = translations.pageTitleApp;
     if (chart && translations.chartTimeAxis && translations.chartValueAxis) {
         chart.options.scales.x.title.text = translations.chartTimeAxis;
         chart.options.scales.y.title.text = translations.chartValueAxis;
-        chart.update('none'); // 애니메이션 없이 차트 업데이트
+        chart.update('none');
     }
-    updateConnectionUI(); // 연결 버튼 텍스트 업데이트
+    updateConnectionUI();
+    updateSensorInputs(); // 언어 변경 시 센서 이름 기본값도 업데이트
 }
 
-/**
- * Chart.js 라이브러리를 사용하여 실시간 데이터 표시를 위한 라인 차트를 초기화합니다.
- */
+// --- 차트 및 UI 초기화 ---
 function initializeChart() {
-    if (typeof Chart === 'undefined') {
-        logMessage('Chart.js가 로드되지 않았습니다.');
-        return;
-    }
+    if (typeof Chart === 'undefined') return logMessage('logChartJsError');
     const ctx = document.getElementById('dataChart').getContext('2d');
     chart = new Chart(ctx, {
         type: 'line',
@@ -236,10 +209,7 @@ function initializeChart() {
             responsive: true, maintainAspectRatio: false, animation: false,
             interaction: { intersect: false, mode: 'index' },
             plugins: {
-                zoom: { // 차트 확대/축소 플러그인 설정
-                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
-                    pan: { enabled: true, mode: 'x' }
-                },
+                zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } },
                 legend: { display: true, position: 'top', align: 'end' }
             },
             scales: {
@@ -248,12 +218,8 @@ function initializeChart() {
             }
         }
     });
-    logMessage('차트가 초기화되었습니다.');
 }
 
-/**
- * 애플리케이션의 주요 UI 요소에 대한 이벤트 리스너를 설정합니다.
- */
 function setupEventListeners() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     ui.languageSelector.addEventListener('change', (e) => loadLanguage(e.target.value));
@@ -266,16 +232,10 @@ function setupEventListeners() {
 }
 
 // --- UI 관리 ---
-
-/**
- * 사용자가 선택한 장치 유형(시리얼 또는 BLE)에 따라 연결 설정 UI를 동적으로 변경합니다.
- */
 function updateConnectionUI() {
     const deviceType = ui.deviceTypeSelect.value;
     const isConnected = serialPort || (bleDevice && bleDevice.gatt.connected);
-
-    if (isConnected) return; // 이미 연결된 경우 UI를 변경하지 않음
-
+    if (isConnected) return;
     if (deviceType === 'serial') {
         ui.serialSettingsDiv.style.display = 'block';
         ui.bleSettingsDiv.style.display = 'none';
@@ -285,68 +245,36 @@ function updateConnectionUI() {
         ui.bleSettingsDiv.style.display = 'block';
         ui.connectBtn.setAttribute('data-translate', 'connectBLE');
     }
-
-    // 현재 언어에 맞게 버튼 텍스트 업데이트
-    const lang = ui.languageSelector.value;
-    if (lang) {
-        fetch(`translations/${lang}.json`)
-            .then(res => res.json())
-            .then(translations => {
-                const key = ui.connectBtn.getAttribute('data-translate');
-                if (translations[key]) {
-                    ui.connectBtn.textContent = translations[key];
-                }
-            });
-    }
+    const key = ui.connectBtn.getAttribute('data-translate');
+    if (currentTranslations[key]) ui.connectBtn.textContent = currentTranslations[key];
 }
 
 // --- 데이터 처리 및 차트 렌더링 ---
-
-/**
- * 장치로부터 수신된 데이터 한 줄을 파싱하여 차트와 CSV 데이터 배열에 추가합니다.
- * @param {string} line - 수신된 데이터 문자열.
- */
 function processDataLine(line) {
     const currentTime = new Date();
-    // 밀리초까지 포함된 시간 문자열 생성
-    const timeWithMs = currentTime.toLocaleTimeString('ko-KR', { hour12: false }) + '.' + currentTime.getMilliseconds().toString().padStart(3, '0');
-    logDataMessage(`[${timeWithMs}] ${line}`); // 수신 데이터 로그에 기록
+    // ▼▼▼ 수정된 부분 ▼▼▼
+    const timeWithMs = currentTime.toLocaleTimeString(currentLang, { hour12: false }) + '.' + currentTime.getMilliseconds().toString().padStart(3, '0');
+    logDataMessage(`[${timeWithMs}] ${line}`);
 
-    if (!isLogging || isPaused) return; // 로깅 중이 아니거나 일시정지 상태이면 중단
+    if (!isLogging || isPaused) return;
 
-    let dataPart = line.trim();
-    // "DATA," 접두사 제거 (있는 경우)
-    if (dataPart.toUpperCase().startsWith('DATA,')) {
-        dataPart = dataPart.substring(5).trim();
-    }
+    let dataPart = line.trim().toUpperCase().startsWith('DATA,') ? line.trim().substring(5) : line.trim();
 
-    if (!chartStartTime) chartStartTime = currentTime; // 첫 데이터 수신 시각 기록
+    if (!chartStartTime) chartStartTime = currentTime;
     const elapsedSeconds = (currentTime - chartStartTime) / 1000;
 
     try {
         const values = dataPart.split(',').map(v => parseFloat(v.trim()));
-        if (values.some(isNaN)) { // 숫자가 아닌 값이 있는지 확인
-            logMessage(`데이터 처리 경고: 숫자가 아닌 값이 포함되어 건너뜁니다 -> "${line}"`);
-            return;
-        }
-
-        // 각 센서 값을 차트 데이터셋에 추가
+        if (values.some(isNaN)) return logMessage('logDataWarning', { line });
         values.forEach((value, i) => {
-            if (chart.data.datasets[i]) {
-                chart.data.datasets[i].data.push({ x: elapsedSeconds, y: value });
-            }
+            if (chart.data.datasets[i]) chart.data.datasets[i].data.push({ x: elapsedSeconds, y: value });
         });
-        
-        csvData.push([currentTime.toLocaleDateString('ko-KR'), timeWithMs, ...values]); // CSV 데이터 배열에 추가
+        csvData.push([currentTime.toLocaleDateString(currentLang), timeWithMs, ...values]);
     } catch (error) {
-        logMessage(`데이터 처리 오류: [${line}] -> ${error.message}`);
+        logMessage('logDataError', { line, error: error.message });
     }
 }
 
-/**
- * `requestAnimationFrame`을 사용하여 차트를 실시간으로 부드럽게 업데이트하고 다시 그립니다.
- * 차트의 X축 범위를 데이터 길이에 따라 동적으로 조절합니다(EXPANDING/SHIFTING).
- */
 function renderChart() {
     if (!isLogging || isPaused || !chart.data.datasets.length || !chart.data.datasets[0] || chart.data.datasets[0].data.length < 2) {
         animationFrameId = requestAnimationFrame(renderChart);
@@ -356,138 +284,89 @@ function renderChart() {
     const lastPoint = chart.data.datasets[0].data[chart.data.datasets[0].data.length - 1];
     const totalDuration = lastPoint.x - firstPoint.x;
 
-    // 총 데이터 기간이 MAX_VIEW_SECONDS를 초과하면 SHIFTING 모드로 전환
     if (chartMode === 'EXPANDING' && totalDuration > MAX_VIEW_SECONDS) chartMode = 'SHIFTING';
 
     if (chartMode === 'EXPANDING') {
-        // 확장 모드: 전체 데이터를 보여줌
         chart.options.scales.x.min = firstPoint.x;
         chart.options.scales.x.max = lastPoint.x;
     } else {
-        // 이동 모드: 최신 MAX_VIEW_SECONDS 만큼의 데이터만 보여줌
         const visibleMax = lastPoint.x;
         const visibleMin = visibleMax - MAX_VIEW_SECONDS;
         chart.options.scales.x.min = visibleMin;
         chart.options.scales.x.max = visibleMax;
-        // 화면 밖으로 나간 오래된 데이터 제거 (성능 최적화)
         chart.data.datasets.forEach(dataset => {
-            while (dataset.data.length > 2 && dataset.data[1].x < visibleMin) {
-                dataset.data.shift();
-            }
+            while (dataset.data.length > 2 && dataset.data[1].x < visibleMin) dataset.data.shift();
         });
     }
     updateXAxisTicks(chart.options.scales.x.max - chart.options.scales.x.min);
-    chart.update('none'); // 애니메이션 없이 차트 업데이트
-    animationFrameId = requestAnimationFrame(renderChart); // 다음 프레임 요청
+    chart.update('none');
+    animationFrameId = requestAnimationFrame(renderChart);
 }
 
-/**
- * 차트의 X축(시간) 눈금 표시 형식을 현재 확대/축소 수준에 맞게 동적으로 변경합니다.
- * @param {number} viewDuration - 현재 차트에 표시되는 시간의 길이(초).
- */
 function updateXAxisTicks(viewDuration) {
-    chart.options.scales.x.ticks.callback = function(value, index, values) {
+    chart.options.scales.x.ticks.callback = function(value) {
         if (!chartStartTime) return value;
         const date = new Date(chartStartTime.getTime() + value * 1000);
-        if (viewDuration <= 10) return date.toLocaleTimeString('ko-KR', { minute: '2-digit', second: '2-digit' }) + '.' + date.getMilliseconds().toString().padStart(3, '0').substring(0,1);
-        if (viewDuration <= 120) return date.toLocaleTimeString('ko-KR', { minute: '2-digit', second: '2-digit' });
-        return date.toLocaleTimeString('ko-KR', { hour12: false });
+        if (viewDuration <= 10) return date.toLocaleTimeString(currentLang, { minute: '2-digit', second: '2-digit' }) + '.' + date.getMilliseconds().toString().padStart(3, '0').substring(0, 1);
+        if (viewDuration <= 120) return date.toLocaleTimeString(currentLang, { minute: '2-digit', second: '2-digit' });
+        return date.toLocaleTimeString(currentLang, { hour12: false });
     };
 }
 
 // --- 로깅 제어 ---
-
-/**
- * 데이터 로깅을 시작하고 관련 UI 상태를 업데이트합니다.
- */
 function startLogging() {
-    if (!serialPort && !bleDevice) {
-        alert('먼저 장치에 연결해주세요.');
-        return;
-    }
+    if (!serialPort && !bleDevice) return alert(currentTranslations.alertConnectFirst || 'Please connect to a device first.');
     isLogging = true; isPaused = false; chartMode = 'EXPANDING'; chartStartTime = null;
-    csvData = [['날짜', '시간(ms포함)', ...sensorNames]]; // CSV 헤더 초기화
+    csvData = [[currentTranslations.csvDate || 'Date', currentTranslations.csvTime || 'Time', ...sensorNames]];
     
-    // 차트 데이터 초기화
-    if (chart && chart.data.datasets) {
-        chart.data.datasets.forEach(dataset => dataset.data = []);
-        chart.update();
-    }
+    if (chart && chart.data.datasets) chart.data.datasets.forEach(dataset => dataset.data = []);
     
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     animationFrameId = requestAnimationFrame(renderChart);
 
-    // 버튼 상태 업데이트
     ui.startBtn.disabled = true;
     ui.pauseBtn.disabled = false;
-    ui.pauseBtn.textContent = document.querySelector('[data-translate="pause"]').textContent;
+    ui.pauseBtn.textContent = currentTranslations.pause || 'Pause';
     ui.stopBtn.disabled = false;
-    logMessage('로깅 시작');
+    logMessage('logStart');
 }
 
-/**
- * 데이터 로깅을 일시정지하거나 재개합니다.
- */
 function togglePause() {
     isPaused = !isPaused;
-    const lang = ui.languageSelector.value;
-    // '일시정지'/'재개' 버튼 텍스트를 현재 언어에 맞게 토글
-    fetch(`translations/${lang}.json`)
-        .then(res => res.json())
-        .then(translations => {
-            ui.pauseBtn.textContent = isPaused ? (translations.resume || '재개') : (translations.pause || '일시정지');
-        });
-    logMessage(isPaused ? '로깅 일시정지' : '로깅 재개');
+    ui.pauseBtn.textContent = isPaused ? (currentTranslations.resume || 'Resume') : (currentTranslations.pause || 'Pause');
+    logMessage(isPaused ? 'logPause' : 'logResume');
 }
 
-/**
- * 데이터 로깅을 중지하고, 수집된 데이터가 있으면 CSV 다운로드를 시작합니다.
- */
 function stopLogging() {
     isLogging = false;
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = null;
-    }
-    // 버튼 상태 업데이트
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
     ui.startBtn.disabled = false;
     ui.pauseBtn.disabled = true;
-
-    const lang = ui.languageSelector.value;
-    fetch(`translations/${lang}.json`)
-        .then(res => res.json())
-        .then(translations => {
-            ui.pauseBtn.textContent = translations.pause || '일시정지';
-        });
-
+    ui.pauseBtn.textContent = currentTranslations.pause || 'Pause';
     ui.stopBtn.disabled = true;
-    logMessage('로깅 중지');
-    if (csvData.length > 1) downloadCSV(); // 데이터가 있을 경우에만 다운로드
+    logMessage('logStop');
+    if (csvData.length > 1) downloadCSV();
 }
 
 // --- 센서 설정 ---
-
-/**
- * '센서 개수' 입력 값에 따라 센서 이름을 설정하는 입력 필드를 동적으로 생성/제거합니다.
- */
 function updateSensorInputs() {
     const count = parseInt(ui.sensorCountInput.value, 10) || 0;
     ui.sensorInputsContainer.innerHTML = '';
     
     const newSensorNames = [];
+    const sensorLabel = currentTranslations.sensorDefaultName || 'Sensor'; // ▼▼▼ 수정된 부분 ▼▼▼
+
     for (let i = 0; i < count; i++) {
-        // 기존 이름이 있으면 사용하고, 없으면 기본 이름(예: '센서 1')을 사용
-        const defaultNameKey = `sensorDefaultName`;
-        const defaultName = sensorNames[i] || `${document.querySelector(`[data-translate="${defaultNameKey}"]`)?.textContent || '센서'} ${i + 1}`;
+        const defaultName = sensorNames[i] || `${sensorLabel} ${i + 1}`;
         newSensorNames.push(defaultName);
         
         const inputGroup = document.createElement('div');
         inputGroup.className = 'sensor-input-group';
-        inputGroup.innerHTML = `<label>센서 ${i + 1}:</label><input type="text" value="${defaultName}">`;
+        inputGroup.innerHTML = `<label>${sensorLabel} ${i + 1}:</label><input type="text" value="${defaultName}">`;
         
-        // 입력 필드 값이 변경될 때마다 센서 이름을 업데이트
         inputGroup.querySelector('input').addEventListener('input', (e) => {
-            sensorNames[i] = e.target.value.trim() || `${document.querySelector(`[data-translate="${defaultNameKey}"]`)?.textContent || '센서'} ${i + 1}`;
+            sensorNames[i] = e.target.value.trim() || `${sensorLabel} ${i + 1}`;
             updateChartDatasets();
         });
         ui.sensorInputsContainer.appendChild(inputGroup);
@@ -496,90 +375,54 @@ function updateSensorInputs() {
     updateChartDatasets();
 }
 
-/**
- * 현재 센서 이름과 개수에 맞게 차트의 데이터셋을 업데이트합니다.
- */
 function updateChartDatasets() {
     if (!chart) return;
-
     sensorNames.forEach((name, i) => {
         if (chart.data.datasets[i]) {
-            // 기존 데이터셋이 있으면 이름만 변경
             chart.data.datasets[i].label = name;
         } else {
-            // 없으면 새로운 데이터셋 생성
             chart.data.datasets[i] = {
                 label: name, data: [], borderColor: sensorColors[i % sensorColors.length],
                 tension: 0.1, pointRadius: 1, borderWidth: 1,
             };
         }
     });
-
-    // 센서 개수가 줄었으면 초과된 데이터셋 제거
     if (chart.data.datasets.length > sensorNames.length) {
         chart.data.datasets.splice(sensorNames.length);
     }
-
     chart.update();
 }
 
-// --- 연결 관리 ---
-
-/**
- * 연결 버튼 클릭 시 현재 연결 상태에 따라 연결 또는 해제 함수를 호출합니다.
- */
+// --- 연결 관리 (시리얼, BLE) ---
 async function toggleConnection() {
-    const isConnected = serialPort || (bleDevice && bleDevice.gatt.connected);
-    if (isConnected) {
+    if (serialPort || (bleDevice && bleDevice.gatt.connected)) {
         if (serialPort) await disconnectSerial();
         if (bleDevice) await disconnectBLE();
     } else {
-        const deviceType = ui.deviceTypeSelect.value;
-        if (deviceType === 'serial') await connectSerial();
-        else await connectBLE();
+        ui.deviceTypeSelect.value === 'serial' ? await connectSerial() : await connectBLE();
     }
 }
 
-/**
- * Web Serial API를 사용하여 사용자가 선택한 시리얼 포트에 연결합니다.
- */
 async function connectSerial() {
-    if (!('serial' in navigator)) return alert('Web Serial API가 지원되지 않는 브라우저입니다.');
+    if (!('serial' in navigator)) return alert(currentTranslations.alertNoWebSerial || 'Web Serial API is not supported.');
     try {
-        logMessage('시리얼 포트 연결 시도 중...');
-        serialPort = await navigator.serial.requestPort(); // 포트 선택창 표시
+        logMessage('logSerialConnecting');
+        serialPort = await navigator.serial.requestPort();
         await serialPort.open({ baudRate: parseInt(document.getElementById('baudRate').value, 10) });
-        logMessage(`시리얼 포트 연결 완료`);
-
-        // 버튼 텍스트를 '연결 해제'로 변경
-        const lang = ui.languageSelector.value;
-        fetch(`translations/${lang}.json`)
-            .then(res => res.json())
-            .then(translations => {
-                ui.connectBtn.textContent = translations.disconnect || '연결 해제';
-            })
-            .catch(err => {
-                console.error("번역 파일 로드 실패:", err);
-                ui.connectBtn.textContent = '연결 해제';
-            });
-        
+        logMessage('logSerialConnected');
+        ui.connectBtn.textContent = currentTranslations.disconnect || 'Disconnect';
         ui.connectBtn.className = 'btn btn-disconnect';
-        await requestWakeLock(); // 화면 꺼짐 방지
+        await requestWakeLock();
         keepReading = true;
-        readFromSerial(); // 데이터 읽기 시작
+        readFromSerial();
     } catch (error) {
-        logMessage(`연결 실패: ${error.message}`);
+        if (error.name !== 'NotFoundError') logMessage('logConnectionFailed', { error: error.message });
     }
 }
 
-/**
- * 연결된 시리얼 포트를 안전하게 닫고 관련 상태를 초기화합니다.
- */
 async function disconnectSerial() {
-    if (wakeLockSentinel) {
-        await wakeLockSentinel.release();
-        wakeLockSentinel = null;
-    }
+    if (wakeLockSentinel) await wakeLockSentinel.release();
+    wakeLockSentinel = null;
     keepReading = false;
     if (isLogging) stopLogging();
     if (serialReader) {
@@ -593,207 +436,138 @@ async function disconnectSerial() {
     }
     ui.connectBtn.className = 'btn btn-connect';
     updateConnectionUI();
-    logMessage('시리얼 연결 해제 완료');
+    logMessage('logSerialDisconnected');
 }
 
-/**
- * 시리얼 포트로부터 들어오는 데이터를 지속적으로 읽고 처리하는 루프입니다.
- */
 async function readFromSerial() {
     if (!serialPort || !serialPort.readable) return;
     const decoder = new TextDecoder('utf-8');
-    let partialLine = ''; // 줄바꿈 문자로 잘린 데이터를 임시 저장
+    let partialLine = '';
     serialReader = serialPort.readable.getReader();
     try {
         while (keepReading) {
             const { value, done } = await serialReader.read();
-            if (done) break; // 스트림 종료
+            if (done) break;
             partialLine += decoder.decode(value, { stream: true });
             const lines = partialLine.split('\n');
-            partialLine = lines.pop() || ''; // 마지막 불완전한 라인은 남겨둠
+            partialLine = lines.pop() || '';
             lines.forEach(line => {
-                const trimmedLine = line.trim();
-                if (trimmedLine) processDataLine(trimmedLine);
+                if (line.trim()) processDataLine(line.trim());
             });
         }
     } catch (error) {
-        logMessage(`읽기 오류: ${error.message}`);
+        logMessage('logReadError', { error: error.message });
     } finally {
-        if(serialReader) serialReader.releaseLock();
+        if (serialReader) serialReader.releaseLock();
     }
 }
 
-// --- 화면 잠금 (Wake Lock) 로직 ---
-
-/**
- * 지원되는 경우, Wake Lock API를 사용하여 화면이 꺼지는 것을 방지합니다.
- */
-const requestWakeLock = async () => {
-    if ('wakeLock' in navigator) {
-        try {
-            wakeLockSentinel = await navigator.wakeLock.request('screen');
-            wakeLockSentinel.addEventListener('release', () => {
-                logMessage('💡 화면 잠금(Wake Lock)이 시스템에 의해 해제되었습니다.');
-            });
-            logMessage('✅ 화면 잠금(Wake Lock) 활성화됨.');
-        } catch (err) {
-            logMessage(`❌ 화면 잠금 활성화 실패: ${err.name}, ${err.message}`);
-        }
-    } else {
-        logMessage('경고: 이 브라우저는 화면 잠금(Wake Lock API)을 지원하지 않습니다.');
-    }
-};
-
-/**
- * 페이지의 가시성 상태가 변경될 때(예: 다른 탭으로 전환했다가 돌아올 때)
- * Wake Lock을 다시 요청합니다.
- */
-const handleVisibilityChange = async () => {
-    const isConnected = serialPort || (bleDevice && bleDevice.gatt.connected);
-    if (isConnected && document.visibilityState === 'visible') {
-        logMessage('페이지가 다시 활성화되어 화면 잠금을 재요청합니다.');
-        await requestWakeLock();
-    }
-};
-
-/**
- * Web Bluetooth API를 사용하여 BLE 장치를 스캔하고 연결합니다.
- */
 async function connectBLE() {
-    if (!('bluetooth' in navigator)) return alert('Web Bluetooth API가 지원되지 않는 브라우저입니다.');
-
-    // 마이크로비트 또는 일반 UART 장치에 맞는 필터 옵션 설정
+    if (!('bluetooth' in navigator)) return alert(currentTranslations.alertNoWebBluetooth || 'Web Bluetooth API is not supported.');
     const devType = ui.bleDeviceTypeSelect.value;
-    const opts = devType === 'microbit'
-        ? { filters: [{ namePrefix: "BBC micro:bit" }], optionalServices: [BLE_SERVICE_UUID] }
-        : { filters: [{ services: [BLE_SERVICE_UUID] }] };
-
+    const opts = devType === 'microbit' ? { filters: [{ namePrefix: "BBC micro:bit" }], optionalServices: [BLE_SERVICE_UUID] } : { filters: [{ services: [BLE_SERVICE_UUID] }] };
     try {
-        logMessage(`BLE 장치 스캔 중...`);
-        bleDevice = await navigator.bluetooth.requestDevice(opts); // 장치 선택창 표시
-        logMessage(`장치 선택: ${bleDevice.name || bleDevice.id}`);
-        bleDevice.addEventListener('gattserverdisconnected', onBLEDisconnected); // 연결 해제 이벤트 리스너
+        logMessage('logBleScanning');
+        bleDevice = await navigator.bluetooth.requestDevice(opts);
+        logMessage('logBleDeviceSelected', { name: bleDevice.name || bleDevice.id });
+        bleDevice.addEventListener('gattserverdisconnected', onBLEDisconnected);
         const server = await bleDevice.gatt.connect();
-        
-        // 버튼 텍스트를 '연결 해제'로 변경
-        const lang = ui.languageSelector.value;
-        fetch(`translations/${lang}.json`)
-            .then(res => res.json())
-            .then(translations => {
-                ui.connectBtn.textContent = translations.disconnect || '연결 해제';
-            })
-            .catch(err => {
-                console.error("번역 파일 로드 실패:", err);
-                ui.connectBtn.textContent = '연결 해제';
-            });
-
+        ui.connectBtn.textContent = currentTranslations.disconnect || 'Disconnect';
         ui.connectBtn.className = 'btn btn-disconnect';
-        await requestWakeLock(); // 화면 꺼짐 방지
-
+        await requestWakeLock();
         const service = await server.getPrimaryService(BLE_SERVICE_UUID);
         bleCharacteristic = await service.getCharacteristic(BLE_CHAR_UUID_RECEIVE);
-        await bleCharacteristic.startNotifications(); // 데이터 수신 알림 시작
+        await bleCharacteristic.startNotifications();
         bleCharacteristic.addEventListener('characteristicvaluechanged', handleBleNotification);
-        logMessage('✅ BLE 장치가 성공적으로 연결되었습니다.');
-
+        logMessage('logBleConnected');
     } catch (error) {
-        logMessage(`BLE 연결 실패: ${error.message}`);
-        if (bleDevice && bleDevice.gatt.connected) {
-            bleDevice.gatt.disconnect();
-        } else {
-            onBLEDisconnected();
-        }
+        logMessage('logBleFailed', { error: error.message });
+        if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+        else onBLEDisconnected();
     }
 }
 
-/**
- * 연결된 BLE 장치를 수동으로 연결 해제합니다.
- */
 async function disconnectBLE() {
-    logMessage('수동으로 BLE 연결 해제를 시도합니다...');
-    if (bleDevice && bleDevice.gatt.connected) {
-        bleDevice.gatt.disconnect(); // 연결 해제 시 onBLEDisconnected 콜백이 자동으로 호출됨
-    } else {
-        logMessage('이미 연결이 끊어졌거나 연결된 장치가 없습니다.');
-    }
+    logMessage('logBleDisconnecting');
+    if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+    else logMessage('logBleAlreadyDisconnected');
 }
 
-/**
- * BLE 장치의 연결이 끊어졌을 때 호출되는 콜백 함수. 관련 상태와 UI를 정리합니다.
- */
 function onBLEDisconnected() {
-    if (wakeLockSentinel) {
-        wakeLockSentinel.release(); wakeLockSentinel = null;
-    }
-    logMessage(`BLE 장치 연결 해제됨.`);
+    if (wakeLockSentinel) { wakeLockSentinel.release(); wakeLockSentinel = null; }
+    logMessage('logBleDisconnected');
     if (isLogging) stopLogging();
-    if (bleCharacteristic) {
-        bleCharacteristic.removeEventListener('characteristicvaluechanged', handleBleNotification);
-    }
+    if (bleCharacteristic) bleCharacteristic.removeEventListener('characteristicvaluechanged', handleBleNotification);
     bleCharacteristic = null;
     bleDevice = null;
     ui.connectBtn.className = 'btn btn-connect';
     updateConnectionUI();
 }
 
-let blePartialLine = ''; // BLE 데이터는 패킷 단위로 잘려 들어올 수 있으므로 임시 저장 변수 사용
+let blePartialLine = '';
 const bleDecoder = new TextDecoder('utf-8');
 
-/**
- * BLE 장치로부터 데이터 알림(notification)을 받았을 때 호출됩니다.
- * @param {Event} event - characteristicvaluechanged 이벤트 객체.
- */
 function handleBleNotification(event) {
-    const value = event.target.value; // 수신된 데이터 (DataView)
+    const value = event.target.value;
     blePartialLine += bleDecoder.decode(value, { stream: true });
-    
     const lines = blePartialLine.split('\n');
-    blePartialLine = lines.pop() || ''; // 마지막 불완전한 라인은 남겨둠
-
+    blePartialLine = lines.pop() || '';
     lines.forEach(line => {
-        const trimmedLine = line.trim();
-        if (trimmedLine) {
-            processDataLine(trimmedLine);
-        }
+        if (line.trim()) processDataLine(line.trim());
     });
 }
 
 // --- 유틸리티 함수 ---
+const requestWakeLock = async () => {
+    if ('wakeLock' in navigator) {
+        try {
+            wakeLockSentinel = await navigator.wakeLock.request('screen');
+            wakeLockSentinel.addEventListener('release', () => logMessage('logWakeLockReleased'));
+            logMessage('logWakeLockAcquired');
+        } catch (err) {
+            logMessage('logWakeLockFailed', { name: err.name, message: err.message });
+        }
+    } else {
+        logMessage('alertNoWakeLock');
+    }
+};
 
-/**
- * 수집된 데이터를 CSV 형식으로 변환하여 파일로 다운로드합니다.
- */
+const handleVisibilityChange = async () => {
+    if (wakeLockSentinel !== null && document.visibilityState === 'visible') {
+        logMessage('logWakeLockReacquired');
+        await requestWakeLock();
+    }
+};
+
 function downloadCSV() {
     const csvContent = csvData.map(row => row.join(',')).join('\n');
-    // UTF-8 BOM을 추가하여 Excel에서 한글이 깨지지 않도록 함
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
     const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '');
-    link.download = `Bowerbird_PRO_datalog_${dateStr}_${timeStr}.csv`;
+    const filename = `Bowerbird_PRO_datalog_${dateStr}_${timeStr}.csv`;
+    link.download = filename;
     link.click();
-    logMessage(`CSV 파일 다운로드 완료: ${link.download}`);
+    logMessage('logCsvDownloaded', { filename });
 }
 
-/**
- * 콘솔 로그 영역에 타임스탬프와 함께 일반 로그 메시지를 출력합니다.
- * @param {string} message - 출력할 로그 메시지.
- */
-function logMessage(message) {
+// ▼▼▼ 수정된 부분 ▼▼▼
+function logMessage(key, params = {}) {
     const log = document.getElementById('consoleLog');
-    const timestamp = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+    const timestamp = new Date().toLocaleTimeString(currentLang, { hour12: false });
+    
+    let message = currentTranslations[key] || key;
+    for (const [param, value] of Object.entries(params)) {
+        message = message.replace(`{${param}}`, value);
+    }
+    
     log.textContent += `[${timestamp}] ${message}\n`;
-    log.scrollTop = log.scrollHeight; // 항상 최신 로그가 보이도록 스크롤
-    // 로그가 너무 많아지면 오래된 로그를 잘라냄 (성능 유지)
+    log.scrollTop = log.scrollHeight;
     if (log.textContent.split('\n').length > 300) log.textContent = log.textContent.split('\n').slice(-200).join('\n');
 }
 
-/**
- * 수신 데이터 로그 영역에 원시 데이터 로그를 출력합니다.
- * @param {string} message - 출력할 데이터 메시지.
- */
 function logDataMessage(message) {
     const log = document.getElementById('dataLog');
     log.textContent += message + '\n';
