@@ -119,7 +119,38 @@ const MAX_VIEW_SECONDS = 60;
 const BLE_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 const BLE_CHAR_UUID_RECEIVE = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 const sensorColors = ['#E6194B', '#4363d8', '#FFD700', '#3cb44b', '#911eb4', '#f58231', '#46f0f0', '#f032e6', '#000075', '#bfef45'];
-const languages = { "ko": "한국어", "en": "English" };
+const languages = {
+    // 기본 및 아시아 주요 언어
+    "ko": "한국어",
+    "en": "English",
+    "ja": "日本語",       // 일본어
+    "zh-CN": "简体中文",   // 중국어(간체)
+    "zh-TW": "繁體中文",   // 중국어(정체)
+
+    // 유럽
+    "de": "Deutsch",     // 독일어
+    "es": "Español",     // 스페인어
+    "fr": "Français",    // 프랑스어
+    "it": "Italiano",    // 이탈리아어
+    "pt": "Português",   // 포르투갈어
+    "ru": "Русский",     // 러시아어
+    "nl": "Nederlands",  // 네덜란드어
+
+    // 중동
+    "ar": "العربية",      // 아랍어
+    "tr": "Türkçe",      // 터키어
+    "fa": "فارسی",        // 페르시아어(이란어)
+
+    // 중앙아시아
+    "uz": "Oʻzbekcha",   // 우즈베크어
+
+    // 동남아시아
+    "id": "Bahasa Indonesia", // 인도네시아어
+    "ms": "Bahasa Melayu",    // 말레이어
+    "th": "ไทย",            // 태국어
+    "vi": "Tiếng Việt",       // 베트남어
+    "tl": "Filipino"          // 필리핀어
+};
 
 // --- UI 요소 객체 ---
 const ui = {
