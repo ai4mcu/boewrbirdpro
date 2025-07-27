@@ -111,19 +111,15 @@ let chartStartTime = null;
 let chartMode = 'EXPANDING';
 let animationFrameId = null;
 let wakeLockSentinel = null;
-// ▼▼▼ 수정된 부분 ▼▼▼
-let currentTranslations = {}; // 현재 로드된 번역 데이터를 저장
-let currentLang = 'ko'; // 현재 선택된 언어 코드 저장
+let currentTranslations = {};
+let currentLang = 'ko';
 
 // --- 상수 ---
 const MAX_VIEW_SECONDS = 60;
 const BLE_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 const BLE_CHAR_UUID_RECEIVE = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 const sensorColors = ['#E6194B', '#4363d8', '#FFD700', '#3cb44b', '#911eb4', '#f58231', '#46f0f0', '#f032e6', '#000075', '#bfef45'];
-const languages = {
-    "ko": "한국어",
-    "en": "English"
-};
+const languages = { "ko": "한국어", "en": "English" };
 
 // --- UI 요소 객체 ---
 const ui = {
@@ -171,7 +167,6 @@ async function loadLanguage(langCode) {
         const response = await fetch(`translations/${langCode}.json`);
         if (!response.ok) throw new Error(`Status: ${response.status}`);
         const translations = await response.json();
-        // ▼▼▼ 수정된 부분 ▼▼▼
         currentTranslations = translations;
         currentLang = langCode;
         applyTranslations(translations);
@@ -195,7 +190,7 @@ function applyTranslations(translations) {
         chart.update('none');
     }
     updateConnectionUI();
-    updateSensorInputs(); // 언어 변경 시 센서 이름 기본값도 업데이트
+    updateSensorInputs();
 }
 
 // --- 차트 및 UI 초기화 ---
@@ -218,6 +213,8 @@ function initializeChart() {
             }
         }
     });
+    // ▼▼▼ 수정된 부분 ▼▼▼
+    logMessage('logChartInit'); 
 }
 
 function setupEventListeners() {
@@ -252,7 +249,6 @@ function updateConnectionUI() {
 // --- 데이터 처리 및 차트 렌더링 ---
 function processDataLine(line) {
     const currentTime = new Date();
-    // ▼▼▼ 수정된 부분 ▼▼▼
     const timeWithMs = currentTime.toLocaleTimeString(currentLang, { hour12: false }) + '.' + currentTime.getMilliseconds().toString().padStart(3, '0');
     logDataMessage(`[${timeWithMs}] ${line}`);
 
@@ -355,7 +351,7 @@ function updateSensorInputs() {
     ui.sensorInputsContainer.innerHTML = '';
     
     const newSensorNames = [];
-    const sensorLabel = currentTranslations.sensorDefaultName || 'Sensor'; // ▼▼▼ 수정된 부분 ▼▼▼
+    const sensorLabel = currentTranslations.sensorDefaultName || 'Sensor';
 
     for (let i = 0; i < count; i++) {
         const defaultName = sensorNames[i] || `${sensorLabel} ${i + 1}`;
@@ -409,6 +405,7 @@ async function connectSerial() {
         logMessage('logSerialConnecting');
         serialPort = await navigator.serial.requestPort();
         await serialPort.open({ baudRate: parseInt(document.getElementById('baudRate').value, 10) });
+        // ▼▼▼ 수정된 부분 ▼▼▼
         logMessage('logSerialConnected');
         ui.connectBtn.textContent = currentTranslations.disconnect || 'Disconnect';
         ui.connectBtn.className = 'btn btn-disconnect';
@@ -436,6 +433,7 @@ async function disconnectSerial() {
     }
     ui.connectBtn.className = 'btn btn-connect';
     updateConnectionUI();
+    // ▼▼▼ 수정된 부분 ▼▼▼
     logMessage('logSerialDisconnected');
 }
 
@@ -553,7 +551,6 @@ function downloadCSV() {
     logMessage('logCsvDownloaded', { filename });
 }
 
-// ▼▼▼ 수정된 부분 ▼▼▼
 function logMessage(key, params = {}) {
     const log = document.getElementById('consoleLog');
     const timestamp = new Date().toLocaleTimeString(currentLang, { hour12: false });
@@ -575,5 +572,7 @@ function logDataMessage(message) {
     if (log.textContent.split('\n').length > 500) log.textContent = log.textContent.split('\n').slice(-400).join('\n');
 }
 </script>
+</body>
+</html>
 </body>
 </html>
