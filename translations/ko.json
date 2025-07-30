@@ -3,7 +3,7 @@
   "appSubtitle": "실시간 데이터 로거 & 플로터",
   "connectionSettings": "연결 설정",
   "language": "언어",
-  "deviceType": "장치 유형",
+  "deviceType": "통신 유형",
   "serialPort": "시리얼 포트",
   "bluetoothLE": "블루투스 LE",
   "baudRateLabel": "보드레이트",
